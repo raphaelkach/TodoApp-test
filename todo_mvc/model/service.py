@@ -2,7 +2,9 @@ from typing import List
 from .entities import Task
 from .repository import SessionStateTaskRepository
 
+
 class TodoService:
+
     def __init__(self, repo: SessionStateTaskRepository):
         self.repo = repo
 
@@ -12,7 +14,7 @@ class TodoService:
     def add_task(self, title: str) -> None:
         title = (title or "").strip()
         if not title:
-            return  # minimalistisch: leere Eingaben ignorieren
+            return
         task = Task(id=self.repo.next_id(), title=title)
         self.repo.add(task)
 

@@ -2,7 +2,9 @@ from typing import List
 from model.entities import Task
 from model.service import TodoService
 
+
 class TodoController:
+
     def __init__(self, service: TodoService):
         self.service = service
 
