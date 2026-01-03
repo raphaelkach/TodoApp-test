@@ -107,7 +107,7 @@ Funktionale Anforderungen
 
 
 ## Update Prompts
-Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css
+Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit
 Ich möchte eine Todo App mit streamlit machen nach der Architektur von MVC. Wie baut man das richtig nach der Vorlesung
 
 Ich möchte erstmal hier mit Starten nach MVC:
