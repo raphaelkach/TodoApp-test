@@ -36,58 +36,120 @@ controller.initialize()
 # ---------- UI State ----------
 st.session_state.setdefault("editing_id", None)
 
+# Add form state
 st.session_state.setdefault("new_title", "")
 st.session_state.setdefault("add_due_enabled", False)
 st.session_state.setdefault("add_due_date", date.today())
+st.session_state.setdefault("new_category", "—")
 
-# ---------- Callbacks ----------
+# Category management state
+st.session_state.setdefault("cat_new_name", "")
+st.session_state.setdefault("cat_rename_target", None)   # category name or None
+st.session_state.setdefault("cat_rename_value", "")
+
+# ---------- Helpers ----------
+def cats() -> list[str]:
+    return controller.list_categories()
+
+def normalize_cat(value: str) -> str | None:
+    if not value or value == "—":
+        return None
+    return value
+
+def validate_category_value(key: str) -> None:
+    """Resets invalid session_state selectbox values when categories changed."""
+    options = set(["—"] + cats())
+    if key in st.session_state and st.session_state[key] not in options:
+        st.session_state[key] = "—"
+
+def set_add_deadline_enabled() -> None:
+    st.session_state["add_due_enabled"] = True
+
+def remove_add_deadline() -> None:
+    st.session_state["add_due_enabled"] = False
+    st.session_state["add_due_date"] = date.today()
+
+def set_task_deadline_enabled(task_id: int) -> None:
+    st.session_state[f"due_enabled_{task_id}"] = True
+
+def remove_task_deadline(task_id: int) -> None:
+    st.session_state[f"due_enabled_{task_id}"] = False
+    st.session_state[f"due_{task_id}"] = date.today()
+
+# ---------- Category actions ----------
+def add_category() -> None:
+    name = (st.session_state.get("cat_new_name") or "").strip()
+    if not name:
+        return
+    controller.add_category(name)
+    st.session_state["cat_new_name"] = ""
+    # nach Add: invalid values neu prüfen
+    validate_category_value("new_category")
+
+def start_rename_category(old: str) -> None:
+    st.session_state["cat_rename_target"] = old
+    st.session_state["cat_rename_value"] = old
+
+def cancel_rename() -> None:
+    st.session_state["cat_rename_target"] = None
+    st.session_state["cat_rename_value"] = ""
+
+def save_rename_category(old: str) -> None:
+    new = (st.session_state.get("cat_rename_value") or "").strip()
+    controller.rename_category(old, new)
+    st.session_state["cat_rename_target"] = None
+    st.session_state["cat_rename_value"] = ""
+
+    # Session-State Values anpassen (Add + alle edit-selectboxes)
+    if new and new != old:
+        if st.session_state.get("new_category") == old:
+            st.session_state["new_category"] = new
+        for k in list(st.session_state.keys()):
+            if k.startswith("cat_sel_") and st.session_state.get(k) == old:
+                st.session_state[k] = new
+
+def delete_category(name: str) -> None:
+    controller.delete_category(name)
+
+    # Wenn gerade renaming dieses items: abbrechen
+    if st.session_state.get("cat_rename_target") == name:
+        cancel_rename()
+
+    # alle Selectbox-Werte resetten, falls sie die gelöschte Kategorie enthielten
+    if st.session_state.get("new_category") == name:
+        st.session_state["new_category"] = "—"
+    for k in list(st.session_state.keys()):
+        if k.startswith("cat_sel_") and st.session_state.get(k) == name:
+            st.session_state[k] = "—"
+
+# ---------- Task actions ----------
 def add_from_state() -> None:
     title = (st.session_state.get("new_title") or "").strip()
     if not title:
         return
 
     due = st.session_state["add_due_date"] if st.session_state["add_due_enabled"] else None
-    controller.add(title, due)
+    category = normalize_cat(st.session_state.get("new_category", "—"))
+
+    controller.add(title, due, category)
 
     st.session_state["new_title"] = ""
     st.session_state["add_due_enabled"] = False
     st.session_state["add_due_date"] = date.today()
-
-
-def enable_add_due() -> None:
-    st.session_state["add_due_enabled"] = True
-    st.session_state["add_due_date"] = st.session_state.get("add_due_date") or date.today()
-
-
-def clear_add_due() -> None:
-    st.session_state["add_due_enabled"] = False
-    st.session_state["add_due_date"] = date.today()
-
+    st.session_state["new_category"] = "—"
 
 def on_delete(task_id: int) -> None:
     controller.delete(task_id)
 
-
 def on_toggle_done(task_id: int) -> None:
     controller.set_done(task_id, bool(st.session_state.get(f"done_{task_id}", False)))
 
-
-def on_edit(task_id: int, current_title: str, current_due: date | None) -> None:
+def on_edit(task_id: int, current_title: str, current_due: date | None, current_cat: str | None) -> None:
     st.session_state["editing_id"] = task_id
     st.session_state[f"title_{task_id}"] = current_title
     st.session_state[f"due_enabled_{task_id}"] = current_due is not None
     st.session_state[f"due_{task_id}"] = current_due or date.today()
-
-
-def enable_task_due(task_id: int) -> None:
-    st.session_state[f"due_enabled_{task_id}"] = True
-    st.session_state[f"due_{task_id}"] = st.session_state.get(f"due_{task_id}") or date.today()
-
-
-def clear_task_due(task_id: int) -> None:
-    st.session_state[f"due_enabled_{task_id}"] = False
-    st.session_state[f"due_{task_id}"] = date.today()
-
+    st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else "—"
 
 def on_save(task_id: int) -> None:
     controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
@@ -96,71 +158,170 @@ def on_save(task_id: int) -> None:
     due = st.session_state.get(f"due_{task_id}", date.today()) if enabled else None
     controller.set_due_date(task_id, due)
 
+    validate_category_value(f"cat_sel_{task_id}")
+    category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", "—"))
+    controller.set_category(task_id, category)
+
     st.session_state["editing_id"] = None
 
-
-def on_cancel(task_id: int, original_title: str, original_due: date | None) -> None:
+def on_cancel(task_id: int, original_title: str, original_due: date | None, original_cat: str | None) -> None:
     st.session_state[f"title_{task_id}"] = original_title
     st.session_state[f"due_enabled_{task_id}"] = original_due is not None
     st.session_state[f"due_{task_id}"] = original_due or date.today()
+    st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else "—"
     st.session_state["editing_id"] = None
 
-
-# ------------------- ADD: Titel + Deadline in einer Zeile -------------------
+# ---------- Add Card ----------
 with st.container(border=True):
     st.markdown("**Neue Aufgabe**")
 
-    col_title, col_due, col_add = st.columns([0.66, 0.16, 0.18], vertical_alignment="bottom")
-
-    with col_title:
+    r1_title, r1_add = st.columns([0.76, 0.24], vertical_alignment="bottom")
+    with r1_title:
         st.text_input(
             "Aufgabe",
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,
+            on_change=add_from_state,  # Enter -> hinzufügen
+        )
+    with r1_add:
+        st.button(
+            "Hinzufügen",
+            icon=":material/add_box:",
+            type="primary",
+            on_click=add_from_state,
+            key="add_btn",
+            use_container_width=True,
         )
 
-    with col_due:
-        if not st.session_state["add_due_enabled"]:
-            st.button(
-                "Deadline",
-                icon=":material/event:",
-                type="tertiary",
-                on_click=enable_add_due,
-                use_container_width=True,
-                key="add_due_btn",
-            )
-        else:
-            d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
-            with d1:
+    c_dead, c_cat, c_set = st.columns([0.22, 0.58, 0.20], vertical_alignment="bottom")
+
+    # Deadline
+    with c_dead:
+        label = st.session_state["add_due_date"].strftime("%d.%m.%y") if st.session_state["add_due_enabled"] else "—"
+        if hasattr(st, "popover"):
+            with st.popover(label, icon=":material/event:"):
                 st.date_input(
                     "Deadline",
                     key="add_due_date",
                     value=st.session_state["add_due_date"],
                     label_visibility="collapsed",
                     format="DD.MM.YYYY",
+                    on_change=set_add_deadline_enabled,
                 )
-            with d2:
                 st.button(
-                    "\u200b",
+                    "Deadline entfernen",
                     icon=":material/event_busy:",
                     type="tertiary",
-                    help="Deadline entfernen",
-                    on_click=clear_add_due,
+                    on_click=remove_add_deadline,
+                    key="add_deadline_remove_btn",
                     use_container_width=True,
-                    key="add_due_clear",
                 )
+        else:
+            # Fallback (sehr alt): immer sichtbar
+            st.date_input(
+                "Deadline",
+                key="add_due_date",
+                value=st.session_state["add_due_date"],
+                label_visibility="collapsed",
+                format="DD.MM.YYYY",
+                on_change=set_add_deadline_enabled,
+            )
 
-    with col_add:
-        st.button(
-            "Hinzufügen",
-            icon=":material/add_box:",
-            type="primary",
-            on_click=add_from_state,
-            use_container_width=True,
-            key="add_btn",
+    # Kategorie (genau 1)
+    with c_cat:
+        validate_category_value("new_category")
+        st.selectbox(
+            "Kategorie",
+            options=["—"] + cats(),
+            key="new_category",
+            label_visibility="collapsed",
         )
+
+    # Kategorieverwaltung (Liste + Rename + Delete Icons)
+    with c_set:
+        with st.popover("\u200b", icon=":material/settings:"):
+            st.markdown("**Kategorien**")
+
+            # Add (max 5)
+            can_add = len(cats()) < 5
+            st.text_input("Neue Kategorie", key="cat_new_name", placeholder="z.B. Uni", disabled=not can_add)
+            st.button(
+                "Anlegen",
+                icon=":material/add:",
+                type="primary",
+                on_click=add_category,
+                key="cat_add_btn",
+                use_container_width=True,
+                disabled=not can_add,
+            )
+            if not can_add:
+                st.caption("Maximal 5 Kategorien möglich.")
+
+            st.divider()
+
+            current = cats()
+            if not current:
+                st.caption("Noch keine Kategorien vorhanden.")
+            else:
+                rename_target = st.session_state.get("cat_rename_target")
+
+                for i, c in enumerate(current):
+                    if rename_target == c:
+                        a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
+                        with a:
+                            st.text_input(
+                                "Umbenennen",
+                                key="cat_rename_value",
+                                label_visibility="collapsed",
+                            )
+                        with b:
+                            st.button(
+                                "\u200b",
+                                icon=":material/save:",
+                                type="tertiary",
+                                key=f"cat_save_{i}",
+                                on_click=save_rename_category,
+                                args=(c,),
+                                help="Speichern",
+                                use_container_width=True,
+                            )
+                        with d:
+                            st.button(
+                                "\u200b",
+                                icon=":material/cancel:",
+                                type="tertiary",
+                                key=f"cat_cancel_{i}",
+                                on_click=cancel_rename,
+                                help="Abbrechen",
+                                use_container_width=True,
+                            )
+                    else:
+                        a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
+                        with a:
+                            st.write(c)
+                        with b:
+                            st.button(
+                                "\u200b",
+                                icon=":material/edit:",
+                                type="tertiary",
+                                key=f"cat_edit_{i}",
+                                on_click=start_rename_category,
+                                args=(c,),
+                                help="Umbenennen",
+                                use_container_width=True,
+                            )
+                        with d:
+                            st.button(
+                                "\u200b",
+                                icon=":material/delete:",
+                                type="tertiary",
+                                key=f"cat_del_{i}",
+                                on_click=delete_category,
+                                args=(c,),
+                                help="Löschen",
+                                use_container_width=True,
+                            )
 
 st.divider()
 
@@ -194,17 +355,13 @@ elif filter_opt == "Erledigt":
 
 st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
 
-# ------------------- LISTE: Titel + Deadline in einer Zeile -------------------
+# ---------- List ----------
 if not tasks:
     st.info("Noch keine Aufgaben.")
 else:
     for t in tasks:
         with st.container(border=True):
             editing = (st.session_state.get("editing_id") == t.id)
-
-            st.session_state.setdefault(f"title_{t.id}", t.title)
-            st.session_state.setdefault(f"due_enabled_{t.id}", t.due_date is not None)
-            st.session_state.setdefault(f"due_{t.id}", t.due_date or date.today())
 
             if editing:
                 col_chk, col_main, col_save, col_cancel = st.columns(
@@ -230,54 +387,67 @@ else:
                 )
 
             with col_main:
-                c_title, c_due = st.columns([0.80, 0.20], vertical_alignment="bottom")
+                left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
 
                 if editing:
-                    with c_title:
+                    st.session_state.setdefault(f"title_{t.id}", t.title)
+                    st.session_state.setdefault(f"due_enabled_{t.id}", t.due_date is not None)
+                    st.session_state.setdefault(f"due_{t.id}", t.due_date or date.today())
+                    st.session_state.setdefault(f"cat_sel_{t.id}", t.category if t.category else "—")
+
+                    with left:
                         st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
 
-                    with c_due:
-                        if not st.session_state[f"due_enabled_{t.id}"]:
-                            st.button(
-                                "Deadline",
-                                icon=":material/event:",
-                                type="tertiary",
-                                on_click=enable_task_due,
-                                args=(t.id,),
-                                use_container_width=True,
-                                key=f"due_btn_{t.id}",
+                    with right:
+                        r_dead, r_cat = st.columns([0.36, 0.64], vertical_alignment="bottom")
+
+                        with r_dead:
+                            label = (
+                                st.session_state[f"due_{t.id}"].strftime("%d.%m.%y")
+                                if st.session_state[f"due_enabled_{t.id}"]
+                                else "—"
                             )
-                        else:
-                            d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
-                            with d1:
+                            with st.popover(label, icon=":material/event:"):
                                 st.date_input(
                                     "Deadline",
                                     key=f"due_{t.id}",
                                     value=st.session_state[f"due_{t.id}"],
                                     label_visibility="collapsed",
                                     format="DD.MM.YYYY",
+                                    on_change=set_task_deadline_enabled,
+                                    args=(t.id,),
                                 )
-                            with d2:
                                 st.button(
-                                    "\u200b",
+                                    "Deadline entfernen",
                                     icon=":material/event_busy:",
                                     type="tertiary",
-                                    help="Deadline entfernen",
-                                    on_click=clear_task_due,
+                                    on_click=remove_task_deadline,
                                     args=(t.id,),
+                                    key=f"due_remove_{t.id}",
                                     use_container_width=True,
-                                    key=f"due_clear_{t.id}",
                                 )
 
-                else:
-                    with c_title:
-                        st.session_state[f"title_{t.id}"] = f"✓ {t.title}" if t.done else t.title
-                        st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed", disabled=True)
+                        with r_cat:
+                            validate_category_value(f"cat_sel_{t.id}")
+                            st.selectbox(
+                                "Kategorie",
+                                options=["—"] + cats(),
+                                key=f"cat_sel_{t.id}",
+                                label_visibility="collapsed",
+                            )
 
-                    with c_due:
-                        due_display = t.due_date.strftime("%d.%m.%y") if t.due_date else "—"
-                        st.session_state[f"due_display_{t.id}"] = due_display
-                        st.text_input("Deadline", key=f"due_display_{t.id}", label_visibility="collapsed", disabled=True)
+                else:
+                    with left:
+                        st.markdown(f"~~{t.title}~~" if t.done else t.title)
+
+                    with right:
+                        parts = []
+                        if t.due_date:
+                            parts.append(f"Deadline: {t.due_date.strftime('%d.%m.%y')}")
+                        if t.category:
+                            parts.append(t.category)
+                        if parts:
+                            st.caption(" — ".join(parts))
 
             if editing:
                 with col_save:
@@ -298,7 +468,7 @@ else:
                         help="Abbrechen",
                         key=f"cancel_{t.id}",
                         on_click=on_cancel,
-                        args=(t.id, t.title, t.due_date),
+                        args=(t.id, t.title, t.due_date, t.category),
                     )
             else:
                 with col_edit:
@@ -309,7 +479,7 @@ else:
                         help="Bearbeiten",
                         key=f"edit_{t.id}",
                         on_click=on_edit,
-                        args=(t.id, t.title, t.due_date),
+                        args=(t.id, t.title, t.due_date, t.category),
                     )
                 with col_del:
                     st.button(

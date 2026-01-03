@@ -13,8 +13,22 @@ class TodoController:
     def initialize(self) -> None:
         self.service.initialize()
 
-    def add(self, title: str, due_date: date | None = None) -> None:
-        self.service.add_task(title, due_date)
+    # Categories
+    def list_categories(self) -> List[str]:
+        return self.service.list_categories()
+
+    def add_category(self, name: str) -> None:
+        self.service.add_category(name)
+
+    def rename_category(self, old: str, new: str) -> None:
+        self.service.rename_category(old, new)
+
+    def delete_category(self, name: str) -> None:
+        self.service.delete_category(name)
+
+    # Tasks
+    def add(self, title: str, due_date: date | None = None, category: str | None = None) -> None:
+        self.service.add_task(title, due_date, category)
 
     def list(self) -> List[Task]:
         return self.service.list_tasks()
@@ -30,3 +44,6 @@ class TodoController:
 
     def set_due_date(self, task_id: int, due_date: date | None) -> None:
         self.service.set_due_date(task_id, due_date)
+
+    def set_category(self, task_id: int, category: str | None) -> None:
+        self.service.set_category(task_id, category)

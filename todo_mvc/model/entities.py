@@ -10,3 +10,4 @@ class Task:
     title: str
     done: bool = False
     due_date: date | None = None
+    category: str | None = None

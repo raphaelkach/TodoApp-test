@@ -105,7 +105,7 @@ Funktionale Anforderungen
 
 
 ## Update Prompts
-Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit.
+Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit. 
 Ich möchte eine Todo App mit streamlit machen nach der Architektur von MVC. Wie baut man das richtig nach der Vorlesung
 
 Ich möchte erstmal hier mit Starten nach MVC:
@@ -118,4 +118,4 @@ Aufgabe: Eine funktionale, minimalistische TODO-App erstellen.
     - Lassen Sie Aufgaben mit Checkboxen anzeigen
     - Löschfunktion
 
-Für die Icons sollen immer die Icons von Google genutzt werden als: https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web
+Für die Icons sollen immer die Icons von Google genutzt werden als: https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web. Dabei sollen ausschließlich diese Icons genutzt werden und keine Emojis
