@@ -175,7 +175,7 @@ else:
                 with col_cancel:
                     st.button(
                         "\u200b",
-                        icon=":material/close:",
+                        icon=":material/cancel:",
                         type="tertiary",
                         help="Abbrechen",
                         key=f"cancel_{t.id}",
@@ -205,5 +205,3 @@ else:
                         on_click=on_delete,
                         args=(t.id,),
                     )
-
-        st.write("")
