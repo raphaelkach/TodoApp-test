@@ -28,6 +28,7 @@ st.markdown(
 )
 
 CATEGORY_NONE_LABEL = "Kategorie auswählen"
+FILTER_RAW_VALUES = {"Alle", "Offen", "Erledigt"}
 
 # ---------- MVC Wiring ----------
 repo = SessionStateTaskRepository(st.session_state)
@@ -48,6 +49,9 @@ st.session_state.setdefault("cat_new_name", "")
 st.session_state.setdefault("cat_rename_target", None)
 st.session_state.setdefault("cat_rename_value", "")
 
+# Filter state (stabil, unabhängig von Labels mit Counts)
+st.session_state.setdefault("filter_raw", "Alle")
+
 # ---------- Helpers ----------
 def cats() -> list[str]:
     return controller.list_categories()
@@ -62,10 +66,26 @@ def validate_category_value(key: str) -> None:
     if key in st.session_state and st.session_state[key] not in options:
         st.session_state[key] = CATEGORY_NONE_LABEL
 
-def current_filter_value() -> str:
-    if hasattr(st, "segmented_control"):
-        return st.session_state.get("filter_seg", "Alle")
-    return st.session_state.get("filter_radio", "Alle")
+def normalize_filter_from_label(label: str) -> str:
+    s = (label or "").strip()
+    if s.startswith("Offen"):
+        return "Offen"
+    if s.startswith("Erledigt"):
+        return "Erledigt"
+    if s.startswith("Alle"):
+        return "Alle"
+    if s in FILTER_RAW_VALUES:
+        return s
+    return "Alle"
+
+def get_filter_raw() -> str:
+    raw = st.session_state.get("filter_raw", "Alle")
+    if raw in FILTER_RAW_VALUES:
+        return raw
+    for key in ("filter_seg", "filter_radio"):
+        if key in st.session_state:
+            return normalize_filter_from_label(str(st.session_state[key]))
+    return "Alle"
 
 # ---------- Category actions ----------
 def add_category() -> None:
@@ -155,13 +175,11 @@ def on_cancel(task_id: int, original_title: str, original_due: date | None, orig
 # Add Card
 # =========================
 with st.container(border=True):
-    # Header row: gleiche Spalten wie Row 1 (Titel + Hinzufügen),
-    # damit der rechte Rand identisch ist
+    # Header row: gleicher rechter Rand wie "Hinzufügen" (Row 1)
     h_left, h_right = st.columns([0.76, 0.24], vertical_alignment="center")
     with h_left:
         st.markdown("**Neue Aufgabe**")
     with h_right:
-        # Spacer + kleine Spalte rechts -> Popover-Trigger sitzt am rechten Rand
         _spacer, _btn = st.columns([0.62, 0.38], vertical_alignment="center")
         with _btn:
             with st.popover("\u200b", icon=":material/settings:"):
@@ -291,165 +309,182 @@ with st.container(border=True):
 st.divider()
 
 # =========================
-# Filter + Counts (TITLE FIRST, THEN SELECTION)
+# Aufgabenliste (Container) + Filter mit Counts (Labels)
 # =========================
-all_tasks = controller.list()
-open_count = sum(1 for t in all_tasks if not t.done)
-done_count = sum(1 for t in all_tasks if t.done)
+with st.container(border=True):
+    all_tasks = controller.list()
+    all_count = len(all_tasks)
+    open_count = sum(1 for t in all_tasks if not t.done)
+    done_count = sum(1 for t in all_tasks if t.done)
 
-filter_opt = current_filter_value()
-if filter_opt == "Offen":
-    tasks = [t for t in all_tasks if not t.done]
-elif filter_opt == "Erledigt":
-    tasks = [t for t in all_tasks if t.done]
-else:
-    tasks = all_tasks
+    # Header wie "Neue Aufgabe" (fett, keine Counts im Text)
+    st.markdown("**Aufgabenliste**")
 
-st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
+    # Counts im Filter anzeigen
+    opt_all = f"Alle ({all_count})"
+    opt_open = f"Offen ({open_count})"
+    opt_done = f"Erledigt ({done_count})"
+    options = [opt_all, opt_open, opt_done]
 
-if hasattr(st, "segmented_control"):
-    st.segmented_control(
-        "Filter",
-        options=["Alle", "Offen", "Erledigt"],
-        default=filter_opt if filter_opt in {"Alle", "Offen", "Erledigt"} else "Alle",
-        label_visibility="collapsed",
-        key="filter_seg",
-    )
-else:
-    st.radio(
-        "Filter",
-        ["Alle", "Offen", "Erledigt"],
-        index=["Alle", "Offen", "Erledigt"].index(filter_opt) if filter_opt in {"Alle", "Offen", "Erledigt"} else 0,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="filter_radio",
-    )
+    filter_raw = get_filter_raw()
+    st.session_state["filter_raw"] = filter_raw
 
-filter_opt = current_filter_value()
-if filter_opt == "Offen":
-    tasks = [t for t in all_tasks if not t.done]
-elif filter_opt == "Erledigt":
-    tasks = [t for t in all_tasks if t.done]
-else:
-    tasks = all_tasks
+    # Default Option basierend auf raw
+    if filter_raw == "Offen":
+        default_opt = opt_open
+    elif filter_raw == "Erledigt":
+        default_opt = opt_done
+    else:
+        default_opt = opt_all
 
-# =========================
-# List
-# =========================
-if not tasks:
-    st.info("Noch keine Aufgaben.")
-else:
-    for t in tasks:
-        with st.container(border=True):
-            editing = (st.session_state.get("editing_id") == t.id)
+    # Filter-Auswahl (mit Counts)
+    if hasattr(st, "segmented_control"):
+        selected = st.segmented_control(
+            "Filter",
+            options=options,
+            default=default_opt,
+            label_visibility="collapsed",
+            key="filter_seg",
+        )
+    else:
+        selected = st.radio(
+            "Filter",
+            options,
+            index=options.index(default_opt),
+            horizontal=True,
+            label_visibility="collapsed",
+            key="filter_radio",
+        )
 
-            if editing:
-                col_chk, col_main, col_save, col_cancel = st.columns(
-                    [0.06, 0.82, 0.06, 0.06],
-                    gap="small",
-                    vertical_alignment="center",
-                )
-            else:
-                col_chk, col_main, col_edit, col_del = st.columns(
-                    [0.06, 0.82, 0.06, 0.06],
-                    gap="small",
-                    vertical_alignment="center",
-                )
+    if selected is not None:
+        st.session_state["filter_raw"] = normalize_filter_from_label(str(selected))
 
-            with col_chk:
-                st.checkbox(
-                    "Erledigt",
-                    value=t.done,
-                    key=f"done_{t.id}",
-                    label_visibility="collapsed",
-                    on_change=on_toggle_done,
-                    args=(t.id,),
-                )
+    # Filtern
+    filter_raw = get_filter_raw()
+    if filter_raw == "Offen":
+        tasks = [t for t in all_tasks if not t.done]
+    elif filter_raw == "Erledigt":
+        tasks = [t for t in all_tasks if t.done]
+    else:
+        tasks = all_tasks
 
-            with col_main:
-                left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
+    if not tasks:
+        st.info("Noch keine Aufgaben.")
+    else:
+        for t in tasks:
+            with st.container(border=True):
+                editing = (st.session_state.get("editing_id") == t.id)
 
                 if editing:
-                    st.session_state.setdefault(f"title_{t.id}", t.title)
-                    st.session_state.setdefault(f"due_{t.id}", t.due_date)
-                    st.session_state.setdefault(f"cat_sel_{t.id}", t.category if t.category else CATEGORY_NONE_LABEL)
-
-                    with left:
-                        st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
-
-                    with right:
-                        r_dead, r_cat = st.columns([0.42, 0.58], vertical_alignment="bottom")
-                        with r_dead:
-                            st.date_input(
-                                "Deadline",
-                                key=f"due_{t.id}",
-                                value=st.session_state.get(f"due_{t.id}"),
-                                label_visibility="collapsed",
-                                format="DD.MM.YYYY",
-                            )
-                        with r_cat:
-                            key = f"cat_sel_{t.id}"
-                            validate_category_value(key)
-                            available = cats()
-                            disabled = len(available) == 0
-                            st.selectbox(
-                                "Kategorie",
-                                options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
-                                key=key,
-                                label_visibility="collapsed",
-                                disabled=disabled,
-                            )
+                    col_chk, col_main, col_save, col_cancel = st.columns(
+                        [0.06, 0.82, 0.06, 0.06],
+                        gap="small",
+                        vertical_alignment="center",
+                    )
                 else:
-                    with left:
-                        st.markdown(f"~~{t.title}~~" if t.done else t.title)
-                    with right:
-                        parts = []
-                        if t.due_date:
-                            parts.append(f"Deadline: {t.due_date.strftime('%d.%m.%Y')}")
-                        if t.category:
-                            parts.append(t.category)
-                        if parts:
-                            st.caption(" — ".join(parts))
+                    col_chk, col_main, col_edit, col_del = st.columns(
+                        [0.06, 0.82, 0.06, 0.06],
+                        gap="small",
+                        vertical_alignment="center",
+                    )
 
-            if editing:
-                with col_save:
-                    st.button(
-                        "\u200b",
-                        icon=":material/save:",
-                        type="tertiary",
-                        help="Speichern",
-                        key=f"save_{t.id}",
-                        on_click=on_save,
+                with col_chk:
+                    st.checkbox(
+                        "Erledigt",
+                        value=t.done,
+                        key=f"done_{t.id}",
+                        label_visibility="collapsed",
+                        on_change=on_toggle_done,
                         args=(t.id,),
                     )
-                with col_cancel:
-                    st.button(
-                        "\u200b",
-                        icon=":material/cancel:",
-                        type="tertiary",
-                        help="Abbrechen",
-                        key=f"cancel_{t.id}",
-                        on_click=on_cancel,
-                        args=(t.id, t.title, t.due_date, t.category),
-                    )
-            else:
-                with col_edit:
-                    st.button(
-                        "\u200b",
-                        icon=":material/edit:",
-                        type="tertiary",
-                        help="Bearbeiten",
-                        key=f"edit_{t.id}",
-                        on_click=on_edit,
-                        args=(t.id, t.title, t.due_date, t.category),
-                    )
-                with col_del:
-                    st.button(
-                        "\u200b",
-                        icon=":material/delete_forever:",
-                        type="tertiary",
-                        help="Löschen",
-                        key=f"del_{t.id}",
-                        on_click=on_delete,
-                        args=(t.id,),
-                    )
+
+                with col_main:
+                    left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
+
+                    if editing:
+                        st.session_state.setdefault(f"title_{t.id}", t.title)
+                        st.session_state.setdefault(f"due_{t.id}", t.due_date)
+                        st.session_state.setdefault(
+                            f"cat_sel_{t.id}",
+                            t.category if t.category else CATEGORY_NONE_LABEL,
+                        )
+
+                        with left:
+                            st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
+
+                        with right:
+                            r_dead, r_cat = st.columns([0.42, 0.58], vertical_alignment="bottom")
+                            with r_dead:
+                                st.date_input(
+                                    "Deadline",
+                                    key=f"due_{t.id}",
+                                    value=st.session_state.get(f"due_{t.id}"),
+                                    label_visibility="collapsed",
+                                    format="DD.MM.YYYY",
+                                )
+                            with r_cat:
+                                key = f"cat_sel_{t.id}"
+                                validate_category_value(key)
+                                available = cats()
+                                disabled = len(available) == 0
+                                st.selectbox(
+                                    "Kategorie",
+                                    options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                                    key=key,
+                                    label_visibility="collapsed",
+                                    disabled=disabled,
+                                )
+                    else:
+                        with left:
+                            st.markdown(f"~~{t.title}~~" if t.done else t.title)
+                        with right:
+                            parts: list[str] = []
+                            if t.due_date:
+                                parts.append(f"Deadline: {t.due_date.strftime('%d.%m.%Y')}")
+                            if t.category:
+                                parts.append(t.category)
+                            if parts:
+                                st.caption(" — ".join(parts))
+
+                if editing:
+                    with col_save:
+                        st.button(
+                            "\u200b",
+                            icon=":material/save:",
+                            type="tertiary",
+                            help="Speichern",
+                            key=f"save_{t.id}",
+                            on_click=on_save,
+                            args=(t.id,),
+                        )
+                    with col_cancel:
+                        st.button(
+                            "\u200b",
+                            icon=":material/cancel:",
+                            type="tertiary",
+                            help="Abbrechen",
+                            key=f"cancel_{t.id}",
+                            on_click=on_cancel,
+                            args=(t.id, t.title, t.due_date, t.category),
+                        )
+                else:
+                    with col_edit:
+                        st.button(
+                            "\u200b",
+                            icon=":material/edit:",
+                            type="tertiary",
+                            help="Bearbeiten",
+                            key=f"edit_{t.id}",
+                            on_click=on_edit,
+                            args=(t.id, t.title, t.due_date, t.category),
+                        )
+                    with col_del:
+                        st.button(
+                            "\u200b",
+                            icon=":material/delete_forever:",
+                            type="tertiary",
+                            help="Löschen",
+                            key=f"del_{t.id}",
+                            on_click=on_delete,
+                            args=(t.id,),
+                        )
