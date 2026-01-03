@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from typing import List, MutableMapping
-from .entities import Task
+from model.entities import Task
 
 TASKS_KEY = "todos"
 NEXT_ID_KEY = "next_id"
 
 
 class SessionStateTaskRepository:
+    """Repository: Datenzugriff (Session State als Persistence-Schicht)."""
 
     def __init__(self, state: MutableMapping):
         self._state = state
@@ -22,8 +25,8 @@ class SessionStateTaskRepository:
 
     def next_id(self) -> int:
         self.ensure_initialized()
-        nid = self._state[NEXT_ID_KEY]
-        self._state[NEXT_ID_KEY] += 1
+        nid = int(self._state[NEXT_ID_KEY])
+        self._state[NEXT_ID_KEY] = nid + 1
         return nid
 
     def add(self, task: Task) -> None:
@@ -32,5 +35,19 @@ class SessionStateTaskRepository:
 
     def delete(self, task_id: int) -> None:
         self.ensure_initialized()
+        self._state[TASKS_KEY] = [t for t in self._state[TASKS_KEY] if t.id != task_id]
+
+    def set_done(self, task_id: int, done: bool) -> None:
+        self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            t for t in self._state[TASKS_KEY] if t.id != task_id]
+            Task(id=t.id, title=t.title, done=done) if t.id == task_id else t
+            for t in self._state[TASKS_KEY]
+        ]
+
+    def rename(self, task_id: int, new_title: str) -> None:
+        """Ändert den Titel einer Task."""
+        self.ensure_initialized()
+        self._state[TASKS_KEY] = [
+            Task(id=t.id, title=new_title, done=t.done) if t.id == task_id else t
+            for t in self._state[TASKS_KEY]
+        ]

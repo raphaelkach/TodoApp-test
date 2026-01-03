@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 
@@ -5,3 +7,4 @@ from dataclasses import dataclass
 class Task:
     id: int
     title: str
+    done: bool = False
