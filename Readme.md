@@ -92,18 +92,15 @@ Mögliche Szenarien:
     - Fehlerfall: leere Aufgabe → Fehlermeldung sichtbar
     - Optional: App neu starten → Aufgaben korrekt wiederhergestellt
 
-
-
-
 Funktionale Anforderungen
 - Todo löschen
 - Todo bearbeiten
 - Todo als erledigt markieren
 - Das System muss Aufgaben in einer Liste anzeigen.
 - Das System soll Aufgaben nach Status (offen/erledigt) filtern können.
+- Jede Aufgabe soll ein Fälligkeitsdatum enthalten können, das über einen Kalenderpicker in unter 3 Klicks ausgewählt werden kann.
 
 - Der Nutzer soll Aufgaben bis zu fünf Kategorien zuordnen können, die er selbst erstellen und löschen kann.
-- Jede Aufgabe soll ein Fälligkeitsdatum enthalten können, das über einen Kalenderpicker in unter 3 Klicks ausgewählt werden kann.
 - Die App soll es dem Nutzer ermöglichen, innerhalb von maximal 5 Sekunden eine neue Aufgabe mit Titel anzulegen.
 
 

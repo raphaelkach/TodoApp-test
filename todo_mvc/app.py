@@ -106,11 +106,10 @@ def on_cancel(task_id: int, original_title: str, original_due: date | None) -> N
     st.session_state["editing_id"] = None
 
 
-# ------------------- ADD: Titel + Datum in einer Zeile -------------------
+# ------------------- ADD: Titel + Deadline in einer Zeile -------------------
 with st.container(border=True):
     st.markdown("**Neue Aufgabe**")
 
-    # 3 Spalten: Titel | Datum | Hinzufügen
     col_title, col_due, col_add = st.columns([0.66, 0.16, 0.18], vertical_alignment="bottom")
 
     with col_title:
@@ -119,13 +118,13 @@ with st.container(border=True):
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,  # Enter -> hinzufügen
+            on_change=add_from_state,
         )
 
     with col_due:
         if not st.session_state["add_due_enabled"]:
             st.button(
-                "Datum",
+                "Deadline",
                 icon=":material/event:",
                 type="tertiary",
                 on_click=enable_add_due,
@@ -136,7 +135,7 @@ with st.container(border=True):
             d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
             with d1:
                 st.date_input(
-                    "Fällig am",
+                    "Deadline",
                     key="add_due_date",
                     value=st.session_state["add_due_date"],
                     label_visibility="collapsed",
@@ -147,7 +146,7 @@ with st.container(border=True):
                     "\u200b",
                     icon=":material/event_busy:",
                     type="tertiary",
-                    help="Datum entfernen",
+                    help="Deadline entfernen",
                     on_click=clear_add_due,
                     use_container_width=True,
                     key="add_due_clear",
@@ -195,7 +194,7 @@ elif filter_opt == "Erledigt":
 
 st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
 
-# ------------------- LISTE: Titel + Datum in einer Zeile -------------------
+# ------------------- LISTE: Titel + Deadline in einer Zeile -------------------
 if not tasks:
     st.info("Noch keine Aufgaben.")
 else:
@@ -235,16 +234,12 @@ else:
 
                 if editing:
                     with c_title:
-                        st.text_input(
-                            "Titel",
-                            key=f"title_{t.id}",
-                            label_visibility="collapsed",
-                        )
+                        st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
 
                     with c_due:
                         if not st.session_state[f"due_enabled_{t.id}"]:
                             st.button(
-                                "Datum",
+                                "Deadline",
                                 icon=":material/event:",
                                 type="tertiary",
                                 on_click=enable_task_due,
@@ -256,7 +251,7 @@ else:
                             d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
                             with d1:
                                 st.date_input(
-                                    "Fällig",
+                                    "Deadline",
                                     key=f"due_{t.id}",
                                     value=st.session_state[f"due_{t.id}"],
                                     label_visibility="collapsed",
@@ -267,7 +262,7 @@ else:
                                     "\u200b",
                                     icon=":material/event_busy:",
                                     type="tertiary",
-                                    help="Datum entfernen",
+                                    help="Deadline entfernen",
                                     on_click=clear_task_due,
                                     args=(t.id,),
                                     use_container_width=True,
@@ -277,22 +272,12 @@ else:
                 else:
                     with c_title:
                         st.session_state[f"title_{t.id}"] = f"✓ {t.title}" if t.done else t.title
-                        st.text_input(
-                            "Titel",
-                            key=f"title_{t.id}",
-                            label_visibility="collapsed",
-                            disabled=True,
-                        )
+                        st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed", disabled=True)
 
                     with c_due:
                         due_display = t.due_date.strftime("%d.%m.%y") if t.due_date else "—"
                         st.session_state[f"due_display_{t.id}"] = due_display
-                        st.text_input(
-                            "Fällig",
-                            key=f"due_display_{t.id}",
-                            label_visibility="collapsed",
-                            disabled=True,
-                        )
+                        st.text_input("Deadline", key=f"due_display_{t.id}", label_visibility="collapsed", disabled=True)
 
             if editing:
                 with col_save:
