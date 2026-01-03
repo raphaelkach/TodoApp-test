@@ -96,12 +96,12 @@ all_tasks = controller.list()
 open_count = sum(1 for t in all_tasks if not t.done)
 done_count = sum(1 for t in all_tasks if t.done)
 
-# schöner: wenn segmented_control verfügbar, sonst radio
 if hasattr(st, "segmented_control"):
     filter_opt = st.segmented_control(
         "Filter",
         options=["Alle", "Offen", "Erledigt"],
         default="Alle",
+        label_visibility="collapsed",   # <-- DAS entfernt die Überschrift
     )
 else:
     filter_opt = st.radio(
