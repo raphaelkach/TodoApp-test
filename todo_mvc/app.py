@@ -27,6 +27,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+CATEGORY_NONE_LABEL = "Kategorie auswählen"
+
 # ---------- MVC Wiring ----------
 repo = SessionStateTaskRepository(st.session_state)
 service = TodoService(repo)
@@ -40,11 +42,11 @@ st.session_state.setdefault("editing_id", None)
 st.session_state.setdefault("new_title", "")
 st.session_state.setdefault("add_due_enabled", False)
 st.session_state.setdefault("add_due_date", date.today())
-st.session_state.setdefault("new_category", "—")
+st.session_state.setdefault("new_category", CATEGORY_NONE_LABEL)
 
 # Category management state
 st.session_state.setdefault("cat_new_name", "")
-st.session_state.setdefault("cat_rename_target", None)   # category name or None
+st.session_state.setdefault("cat_rename_target", None)  # category name or None
 st.session_state.setdefault("cat_rename_value", "")
 
 # ---------- Helpers ----------
@@ -52,16 +54,22 @@ def cats() -> list[str]:
     return controller.list_categories()
 
 def normalize_cat(value: str) -> str | None:
-    if not value or value == "—":
+    if not value or value == CATEGORY_NONE_LABEL:
         return None
     return value
 
 def validate_category_value(key: str) -> None:
-    """Resets invalid session_state selectbox values when categories changed."""
-    options = set(["—"] + cats())
+    options = set([CATEGORY_NONE_LABEL] + cats())
     if key in st.session_state and st.session_state[key] not in options:
-        st.session_state[key] = "—"
+        st.session_state[key] = CATEGORY_NONE_LABEL
 
+def current_filter_value() -> str:
+    """Read current filter selection BEFORE rendering the widget, so header can be above it."""
+    if hasattr(st, "segmented_control"):
+        return st.session_state.get("filter_seg", "Alle")
+    return st.session_state.get("filter_radio", "Alle")
+
+# ---------- Deadline callbacks ----------
 def set_add_deadline_enabled() -> None:
     st.session_state["add_due_enabled"] = True
 
@@ -83,7 +91,6 @@ def add_category() -> None:
         return
     controller.add_category(name)
     st.session_state["cat_new_name"] = ""
-    # nach Add: invalid values neu prüfen
     validate_category_value("new_category")
 
 def start_rename_category(old: str) -> None:
@@ -100,7 +107,7 @@ def save_rename_category(old: str) -> None:
     st.session_state["cat_rename_target"] = None
     st.session_state["cat_rename_value"] = ""
 
-    # Session-State Values anpassen (Add + alle edit-selectboxes)
+    # Update selectbox values in session_state
     if new and new != old:
         if st.session_state.get("new_category") == old:
             st.session_state["new_category"] = new
@@ -111,16 +118,16 @@ def save_rename_category(old: str) -> None:
 def delete_category(name: str) -> None:
     controller.delete_category(name)
 
-    # Wenn gerade renaming dieses items: abbrechen
+    # if currently renaming this category -> cancel
     if st.session_state.get("cat_rename_target") == name:
         cancel_rename()
 
-    # alle Selectbox-Werte resetten, falls sie die gelöschte Kategorie enthielten
+    # reset any selectboxes that used this category
     if st.session_state.get("new_category") == name:
-        st.session_state["new_category"] = "—"
+        st.session_state["new_category"] = CATEGORY_NONE_LABEL
     for k in list(st.session_state.keys()):
         if k.startswith("cat_sel_") and st.session_state.get(k) == name:
-            st.session_state[k] = "—"
+            st.session_state[k] = CATEGORY_NONE_LABEL
 
 # ---------- Task actions ----------
 def add_from_state() -> None:
@@ -129,14 +136,13 @@ def add_from_state() -> None:
         return
 
     due = st.session_state["add_due_date"] if st.session_state["add_due_enabled"] else None
-    category = normalize_cat(st.session_state.get("new_category", "—"))
-
+    category = normalize_cat(st.session_state.get("new_category", CATEGORY_NONE_LABEL))
     controller.add(title, due, category)
 
     st.session_state["new_title"] = ""
     st.session_state["add_due_enabled"] = False
     st.session_state["add_due_date"] = date.today()
-    st.session_state["new_category"] = "—"
+    st.session_state["new_category"] = CATEGORY_NONE_LABEL
 
 def on_delete(task_id: int) -> None:
     controller.delete(task_id)
@@ -149,7 +155,7 @@ def on_edit(task_id: int, current_title: str, current_due: date | None, current_
     st.session_state[f"title_{task_id}"] = current_title
     st.session_state[f"due_enabled_{task_id}"] = current_due is not None
     st.session_state[f"due_{task_id}"] = current_due or date.today()
-    st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else "—"
+    st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
 
 def on_save(task_id: int) -> None:
     controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
@@ -159,7 +165,7 @@ def on_save(task_id: int) -> None:
     controller.set_due_date(task_id, due)
 
     validate_category_value(f"cat_sel_{task_id}")
-    category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", "—"))
+    category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
     controller.set_category(task_id, category)
 
     st.session_state["editing_id"] = None
@@ -168,13 +174,16 @@ def on_cancel(task_id: int, original_title: str, original_due: date | None, orig
     st.session_state[f"title_{task_id}"] = original_title
     st.session_state[f"due_enabled_{task_id}"] = original_due is not None
     st.session_state[f"due_{task_id}"] = original_due or date.today()
-    st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else "—"
+    st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
     st.session_state["editing_id"] = None
 
-# ---------- Add Card ----------
+# =========================
+# Add Card
+# =========================
 with st.container(border=True):
     st.markdown("**Neue Aufgabe**")
 
+    # Row 1: Title + Add Button (Enter -> Add)
     r1_title, r1_add = st.columns([0.76, 0.24], vertical_alignment="bottom")
     with r1_title:
         st.text_input(
@@ -182,7 +191,7 @@ with st.container(border=True):
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,  # Enter -> hinzufügen
+            on_change=add_from_state,
         )
     with r1_add:
         st.button(
@@ -194,9 +203,9 @@ with st.container(border=True):
             use_container_width=True,
         )
 
+    # Row 2: Deadline + Category + Category Manager
     c_dead, c_cat, c_set = st.columns([0.22, 0.58, 0.20], vertical_alignment="bottom")
 
-    # Deadline
     with c_dead:
         label = st.session_state["add_due_date"].strftime("%d.%m.%y") if st.session_state["add_due_enabled"] else "—"
         if hasattr(st, "popover"):
@@ -218,7 +227,6 @@ with st.container(border=True):
                     use_container_width=True,
                 )
         else:
-            # Fallback (sehr alt): immer sichtbar
             st.date_input(
                 "Deadline",
                 key="add_due_date",
@@ -228,22 +236,24 @@ with st.container(border=True):
                 on_change=set_add_deadline_enabled,
             )
 
-    # Kategorie (genau 1)
     with c_cat:
         validate_category_value("new_category")
+        available = cats()
+        disabled = len(available) == 0
+
         st.selectbox(
             "Kategorie",
-            options=["—"] + cats(),
+            options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
             key="new_category",
             label_visibility="collapsed",
+            disabled=disabled,
         )
 
-    # Kategorieverwaltung (Liste + Rename + Delete Icons)
     with c_set:
-        with st.popover("\u200b", icon=":material/settings:"):
+        # Settings icon explicitly "settings"
+        with st.popover("\u2800", icon=":material/settings:"):
             st.markdown("**Kategorien**")
 
-            # Add (max 5)
             can_add = len(cats()) < 5
             st.text_input("Neue Kategorie", key="cat_new_name", placeholder="z.B. Uni", disabled=not can_add)
             st.button(
@@ -325,37 +335,56 @@ with st.container(border=True):
 
 st.divider()
 
-# ---------- Filter + Counts ----------
+# =========================
+# Filter + Counts (TITLE FIRST, THEN SELECTION)
+# =========================
 all_tasks = controller.list()
 open_count = sum(1 for t in all_tasks if not t.done)
 done_count = sum(1 for t in all_tasks if t.done)
 
+# compute tasks count based on CURRENT selection (read from session_state before rendering widget)
+filter_opt = current_filter_value()
+if filter_opt == "Offen":
+    tasks = [t for t in all_tasks if not t.done]
+elif filter_opt == "Erledigt":
+    tasks = [t for t in all_tasks if t.done]
+else:
+    tasks = all_tasks
+
+# ✅ 1) Header first
+st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
+
+# ✅ 2) Selection after header
 if hasattr(st, "segmented_control"):
-    filter_opt = st.segmented_control(
+    st.segmented_control(
         "Filter",
         options=["Alle", "Offen", "Erledigt"],
-        default="Alle",
+        default=filter_opt if filter_opt in {"Alle", "Offen", "Erledigt"} else "Alle",
         label_visibility="collapsed",
         key="filter_seg",
     )
 else:
-    filter_opt = st.radio(
+    st.radio(
         "Filter",
         ["Alle", "Offen", "Erledigt"],
+        index=["Alle", "Offen", "Erledigt"].index(filter_opt) if filter_opt in {"Alle", "Offen", "Erledigt"} else 0,
         horizontal=True,
         label_visibility="collapsed",
         key="filter_radio",
     )
 
-tasks = all_tasks
+# Re-read (so list reflects new selection immediately on rerun)
+filter_opt = current_filter_value()
 if filter_opt == "Offen":
     tasks = [t for t in all_tasks if not t.done]
 elif filter_opt == "Erledigt":
     tasks = [t for t in all_tasks if t.done]
+else:
+    tasks = all_tasks
 
-st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
-
-# ---------- List ----------
+# =========================
+# List
+# =========================
 if not tasks:
     st.info("Noch keine Aufgaben.")
 else:
@@ -393,7 +422,7 @@ else:
                     st.session_state.setdefault(f"title_{t.id}", t.title)
                     st.session_state.setdefault(f"due_enabled_{t.id}", t.due_date is not None)
                     st.session_state.setdefault(f"due_{t.id}", t.due_date or date.today())
-                    st.session_state.setdefault(f"cat_sel_{t.id}", t.category if t.category else "—")
+                    st.session_state.setdefault(f"cat_sel_{t.id}", t.category if t.category else CATEGORY_NONE_LABEL)
 
                     with left:
                         st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
@@ -428,12 +457,17 @@ else:
                                 )
 
                         with r_cat:
-                            validate_category_value(f"cat_sel_{t.id}")
+                            key = f"cat_sel_{t.id}"
+                            validate_category_value(key)
+                            available = cats()
+                            disabled = len(available) == 0
+
                             st.selectbox(
                                 "Kategorie",
-                                options=["—"] + cats(),
-                                key=f"cat_sel_{t.id}",
+                                options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                                key=key,
                                 label_visibility="collapsed",
+                                disabled=disabled,
                             )
 
                 else:

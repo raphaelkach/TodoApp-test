@@ -104,6 +104,11 @@ Funktionale Anforderungen
 - Die App soll es dem Nutzer ermöglichen, innerhalb von maximal 5 Sekunden eine neue Aufgabe mit Titel anzulegen.
 
 
+
+
+Ein Nutzer kann bis zu fünf eigene Kategorien anlegen, umbenennen und löschen; jede Aufgabe ist dabei optional genau einer Kategorie zugeordnet, und beim Löschen einer Kategorie werden alle zugehörigen Aufgaben automatisch unkategorisiert.
+
+
 ## Update Prompts
 Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit. 
 Ich möchte eine Todo App mit streamlit machen nach der Architektur von MVC. Wie baut man das richtig nach der Vorlesung
