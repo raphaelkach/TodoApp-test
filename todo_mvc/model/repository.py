@@ -8,8 +8,6 @@ NEXT_ID_KEY = "next_id"
 
 
 class SessionStateTaskRepository:
-    """Repository: Datenzugriff (Session State als Persistence-Schicht)."""
-
     def __init__(self, state: MutableMapping):
         self._state = state
 
@@ -45,7 +43,6 @@ class SessionStateTaskRepository:
         ]
 
     def rename(self, task_id: int, new_title: str) -> None:
-        """Ändert den Titel einer Task."""
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
             Task(id=t.id, title=new_title, done=t.done) if t.id == task_id else t
