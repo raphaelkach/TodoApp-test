@@ -67,13 +67,6 @@ def current_filter_value() -> str:
         return st.session_state.get("filter_seg", "Alle")
     return st.session_state.get("filter_radio", "Alle")
 
-# ---------- Deadline callbacks ----------
-def clear_add_deadline() -> None:
-    st.session_state["add_due_date"] = None
-
-def clear_task_deadline(task_id: int) -> None:
-    st.session_state[f"due_{task_id}"] = None
-
 # ---------- Category actions ----------
 def add_category() -> None:
     name = (st.session_state.get("cat_new_name") or "").strip()
@@ -138,7 +131,7 @@ def on_toggle_done(task_id: int) -> None:
 def on_edit(task_id: int, current_title: str, current_due: date | None, current_cat: str | None) -> None:
     st.session_state["editing_id"] = task_id
     st.session_state[f"title_{task_id}"] = current_title
-    st.session_state[f"due_{task_id}"] = current_due  # kann None sein
+    st.session_state[f"due_{task_id}"] = current_due
     st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
 
 def on_save(task_id: int) -> None:
@@ -162,7 +155,94 @@ def on_cancel(task_id: int, original_title: str, original_due: date | None, orig
 # Add Card
 # =========================
 with st.container(border=True):
-    st.markdown("**Neue Aufgabe**")
+    # Header row: gleiche Spalten wie Row 1 (Titel + Hinzufügen),
+    # damit der rechte Rand identisch ist
+    h_left, h_right = st.columns([0.76, 0.24], vertical_alignment="center")
+    with h_left:
+        st.markdown("**Neue Aufgabe**")
+    with h_right:
+        # Spacer + kleine Spalte rechts -> Popover-Trigger sitzt am rechten Rand
+        _spacer, _btn = st.columns([0.62, 0.38], vertical_alignment="center")
+        with _btn:
+            with st.popover("\u200b", icon=":material/settings:"):
+                st.markdown("**Kategorien**")
+
+                current = cats()
+                can_add = len(current) < 5
+
+                st.text_input("Neue Kategorie", key="cat_new_name", placeholder="z.B. Uni", disabled=not can_add)
+                st.button(
+                    "Anlegen",
+                    icon=":material/add:",
+                    type="primary",
+                    on_click=add_category,
+                    key="cat_add_btn",
+                    use_container_width=True,
+                    disabled=not can_add,
+                )
+                if not can_add:
+                    st.caption("Maximal 5 Kategorien möglich.")
+
+                st.divider()
+
+                current = cats()
+                if not current:
+                    st.caption("Noch keine Kategorien vorhanden.")
+                else:
+                    rename_target = st.session_state.get("cat_rename_target")
+
+                    for i, c in enumerate(current):
+                        if rename_target == c:
+                            a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
+                            with a:
+                                st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
+                            with b:
+                                st.button(
+                                    "\u200b",
+                                    icon=":material/save:",
+                                    type="tertiary",
+                                    key=f"cat_save_{i}",
+                                    on_click=save_rename_category,
+                                    args=(c,),
+                                    help="Speichern",
+                                    use_container_width=True,
+                                )
+                            with d:
+                                st.button(
+                                    "\u200b",
+                                    icon=":material/cancel:",
+                                    type="tertiary",
+                                    key=f"cat_cancel_{i}",
+                                    on_click=cancel_rename,
+                                    help="Abbrechen",
+                                    use_container_width=True,
+                                )
+                        else:
+                            a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
+                            with a:
+                                st.write(c)
+                            with b:
+                                st.button(
+                                    "\u200b",
+                                    icon=":material/edit:",
+                                    type="tertiary",
+                                    key=f"cat_edit_{i}",
+                                    on_click=start_rename_category,
+                                    args=(c,),
+                                    help="Umbenennen",
+                                    use_container_width=True,
+                                )
+                            with d:
+                                st.button(
+                                    "\u200b",
+                                    icon=":material/delete:",
+                                    type="tertiary",
+                                    key=f"cat_del_{i}",
+                                    on_click=delete_category,
+                                    args=(c,),
+                                    help="Löschen",
+                                    use_container_width=True,
+                                )
 
     # Row 1: Title + Add Button (Enter -> Add)
     r1_title, r1_add = st.columns([0.76, 0.24], vertical_alignment="bottom")
@@ -172,7 +252,7 @@ with st.container(border=True):
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,
+            on_change=add_from_state,  # Enter
         )
     with r1_add:
         st.button(
@@ -184,33 +264,16 @@ with st.container(border=True):
             use_container_width=True,
         )
 
-    c_dead, c_cat, c_set = st.columns([0.44, 0.36, 0.20], vertical_alignment="bottom")
-
+    # Row 2: Deadline + Category
+    c_dead, c_cat = st.columns([0.28, 0.72], vertical_alignment="bottom")
     with c_dead:
-        d_date, d_clear = st.columns([0.86, 0.14], gap="small", vertical_alignment="bottom")
-
-        with d_date:
-            st.date_input(
-                "Deadline",
-                key="add_due_date",
-                value=st.session_state.get("add_due_date"),  # None => leer + Placeholder aus format
-                label_visibility="collapsed",
-                format="DD.MM.YYYY",
-            )
-
-        with d_clear:
-            if st.session_state.get("add_due_date") is not None:
-                st.button(
-                    "\u200b",
-                    icon=":material/event_busy:",
-                    type="tertiary",
-                    help="Deadline entfernen",
-                    key="add_deadline_clear_btn",
-                    on_click=clear_add_deadline,
-                    use_container_width=True,
-                )
-            else:
-                st.empty()
+        st.date_input(
+            "Deadline",
+            key="add_due_date",
+            value=st.session_state.get("add_due_date"),
+            label_visibility="collapsed",
+            format="DD.MM.YYYY",
+        )
 
     with c_cat:
         validate_category_value("new_category")
@@ -224,87 +287,6 @@ with st.container(border=True):
             label_visibility="collapsed",
             disabled=disabled,
         )
-
-    with c_set:
-        with st.popover("\u2800", icon=":material/settings:"):
-            st.markdown("**Kategorien**")
-
-            current = cats()
-            can_add = len(current) < 5
-
-            st.text_input("Neue Kategorie", key="cat_new_name", placeholder="z.B. Uni", disabled=not can_add)
-            st.button(
-                "Anlegen",
-                icon=":material/add:",
-                type="primary",
-                on_click=add_category,
-                key="cat_add_btn",
-                use_container_width=True,
-                disabled=not can_add,
-            )
-            if not can_add:
-                st.caption("Maximal 5 Kategorien möglich.")
-
-            st.divider()
-
-            current = cats()
-            if not current:
-                st.caption("Noch keine Kategorien vorhanden.")
-            else:
-                rename_target = st.session_state.get("cat_rename_target")
-
-                for i, c in enumerate(current):
-                    if rename_target == c:
-                        a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
-                        with a:
-                            st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
-                        with b:
-                            st.button(
-                                "\u200b",
-                                icon=":material/save:",
-                                type="tertiary",
-                                key=f"cat_save_{i}",
-                                on_click=save_rename_category,
-                                args=(c,),
-                                help="Speichern",
-                                use_container_width=True,
-                            )
-                        with d:
-                            st.button(
-                                "\u200b",
-                                icon=":material/cancel:",
-                                type="tertiary",
-                                key=f"cat_cancel_{i}",
-                                on_click=cancel_rename,
-                                help="Abbrechen",
-                                use_container_width=True,
-                            )
-                    else:
-                        a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
-                        with a:
-                            st.write(c)
-                        with b:
-                            st.button(
-                                "\u200b",
-                                icon=":material/edit:",
-                                type="tertiary",
-                                key=f"cat_edit_{i}",
-                                on_click=start_rename_category,
-                                args=(c,),
-                                help="Umbenennen",
-                                use_container_width=True,
-                            )
-                        with d:
-                            st.button(
-                                "\u200b",
-                                icon=":material/delete:",
-                                type="tertiary",
-                                key=f"cat_del_{i}",
-                                on_click=delete_category,
-                                args=(c,),
-                                help="Löschen",
-                                use_container_width=True,
-                            )
 
 st.divider()
 
@@ -396,43 +378,20 @@ else:
                         st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
 
                     with right:
-                        # ✅ mehr Platz für Deadline als Kategorie
-                        r_dead, r_cat = st.columns([0.58, 0.42], vertical_alignment="bottom")
-
+                        r_dead, r_cat = st.columns([0.42, 0.58], vertical_alignment="bottom")
                         with r_dead:
-                            d_date, d_clear = st.columns([0.86, 0.14], gap="small", vertical_alignment="bottom")
-
-                            # ✅ Deadline DIREKT als Feld (kein Popover/Toggle mehr)
-                            with d_date:
-                                st.date_input(
-                                    "Deadline",
-                                    key=f"due_{t.id}",
-                                    value=st.session_state.get(f"due_{t.id}"),
-                                    label_visibility="collapsed",
-                                    format="DD.MM.YYYY",
-                                )
-
-                            with d_clear:
-                                if st.session_state.get(f"due_{t.id}") is not None:
-                                    st.button(
-                                        "\u200b",
-                                        icon=":material/event_busy:",
-                                        type="tertiary",
-                                        help="Deadline entfernen",
-                                        key=f"due_clear_{t.id}",
-                                        on_click=clear_task_deadline,
-                                        args=(t.id,),
-                                        use_container_width=True,
-                                    )
-                                else:
-                                    st.empty()
-
+                            st.date_input(
+                                "Deadline",
+                                key=f"due_{t.id}",
+                                value=st.session_state.get(f"due_{t.id}"),
+                                label_visibility="collapsed",
+                                format="DD.MM.YYYY",
+                            )
                         with r_cat:
                             key = f"cat_sel_{t.id}"
                             validate_category_value(key)
                             available = cats()
                             disabled = len(available) == 0
-
                             st.selectbox(
                                 "Kategorie",
                                 options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
@@ -440,11 +399,9 @@ else:
                                 label_visibility="collapsed",
                                 disabled=disabled,
                             )
-
                 else:
                     with left:
                         st.markdown(f"~~{t.title}~~" if t.done else t.title)
-
                     with right:
                         parts = []
                         if t.due_date:
