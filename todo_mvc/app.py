@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import date
 import streamlit as st
+
 from controller.todo_controller import TodoController
 from model.repository import SessionStateTaskRepository
 from model.service import TodoService
@@ -8,7 +10,7 @@ from model.service import TodoService
 st.set_page_config(page_title="TODO-App", layout="centered")
 st.title("TODO-App")
 
-# ---- CSS MUSS so bestehen bleiben (wie von dir vorgegeben) ----
+# ------------------- DEIN CSS: MUSS GENAU SO BLEIBEN -------------------
 st.markdown(
     """
     <style>
@@ -32,66 +34,138 @@ controller = TodoController(service)
 controller.initialize()
 
 # ---------- UI State ----------
-if "editing_id" not in st.session_state:
-    st.session_state["editing_id"] = None
+st.session_state.setdefault("editing_id", None)
 
-if "new_title" not in st.session_state:
-    st.session_state["new_title"] = ""
+st.session_state.setdefault("new_title", "")
+st.session_state.setdefault("add_due_enabled", False)
+st.session_state.setdefault("add_due_date", date.today())
 
 # ---------- Callbacks ----------
 def add_from_state() -> None:
     title = (st.session_state.get("new_title") or "").strip()
-    if title:
-        controller.add(title)
+    if not title:
+        return
+
+    due = st.session_state["add_due_date"] if st.session_state["add_due_enabled"] else None
+    controller.add(title, due)
+
     st.session_state["new_title"] = ""
+    st.session_state["add_due_enabled"] = False
+    st.session_state["add_due_date"] = date.today()
+
+
+def enable_add_due() -> None:
+    st.session_state["add_due_enabled"] = True
+    st.session_state["add_due_date"] = st.session_state.get("add_due_date") or date.today()
+
+
+def clear_add_due() -> None:
+    st.session_state["add_due_enabled"] = False
+    st.session_state["add_due_date"] = date.today()
+
 
 def on_delete(task_id: int) -> None:
     controller.delete(task_id)
 
-def on_toggle(task_id: int) -> None:
-    done_value = bool(st.session_state.get(f"done_{task_id}", False))
-    controller.set_done(task_id, done_value)
 
-def on_edit(task_id: int, current_title: str) -> None:
+def on_toggle_done(task_id: int) -> None:
+    controller.set_done(task_id, bool(st.session_state.get(f"done_{task_id}", False)))
+
+
+def on_edit(task_id: int, current_title: str, current_due: date | None) -> None:
     st.session_state["editing_id"] = task_id
-    st.session_state[f"title_{task_id}"] = current_title  # roh (ohne ✓)
+    st.session_state[f"title_{task_id}"] = current_title
+    st.session_state[f"due_enabled_{task_id}"] = current_due is not None
+    st.session_state[f"due_{task_id}"] = current_due or date.today()
+
+
+def enable_task_due(task_id: int) -> None:
+    st.session_state[f"due_enabled_{task_id}"] = True
+    st.session_state[f"due_{task_id}"] = st.session_state.get(f"due_{task_id}") or date.today()
+
+
+def clear_task_due(task_id: int) -> None:
+    st.session_state[f"due_enabled_{task_id}"] = False
+    st.session_state[f"due_{task_id}"] = date.today()
+
 
 def on_save(task_id: int) -> None:
     controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
+
+    enabled = bool(st.session_state.get(f"due_enabled_{task_id}", False))
+    due = st.session_state.get(f"due_{task_id}", date.today()) if enabled else None
+    controller.set_due_date(task_id, due)
+
     st.session_state["editing_id"] = None
 
-def on_cancel(task_id: int, original_title: str) -> None:
-    # zurücksetzen
+
+def on_cancel(task_id: int, original_title: str, original_due: date | None) -> None:
     st.session_state[f"title_{task_id}"] = original_title
+    st.session_state[f"due_enabled_{task_id}"] = original_due is not None
+    st.session_state[f"due_{task_id}"] = original_due or date.today()
     st.session_state["editing_id"] = None
 
-# ---------- Add Area (Enter + Button, ohne Form, Icon nativ) ----------
+
+# ------------------- ADD: Titel + Datum in einer Zeile -------------------
 with st.container(border=True):
     st.markdown("**Neue Aufgabe**")
 
-    col_in, col_btn = st.columns([0.82, 0.18], vertical_alignment="bottom")
+    # 3 Spalten: Titel | Datum | Hinzufügen
+    col_title, col_due, col_add = st.columns([0.66, 0.16, 0.18], vertical_alignment="bottom")
 
-    with col_in:
+    with col_title:
         st.text_input(
             "Aufgabe",
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,   # Enter -> hinzufügen
+            on_change=add_from_state,  # Enter -> hinzufügen
         )
 
-    with col_btn:
+    with col_due:
+        if not st.session_state["add_due_enabled"]:
+            st.button(
+                "Datum",
+                icon=":material/event:",
+                type="tertiary",
+                on_click=enable_add_due,
+                use_container_width=True,
+                key="add_due_btn",
+            )
+        else:
+            d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
+            with d1:
+                st.date_input(
+                    "Fällig am",
+                    key="add_due_date",
+                    value=st.session_state["add_due_date"],
+                    label_visibility="collapsed",
+                    format="DD.MM.YYYY",
+                )
+            with d2:
+                st.button(
+                    "\u200b",
+                    icon=":material/event_busy:",
+                    type="tertiary",
+                    help="Datum entfernen",
+                    on_click=clear_add_due,
+                    use_container_width=True,
+                    key="add_due_clear",
+                )
+
+    with col_add:
         st.button(
             "Hinzufügen",
             icon=":material/add_box:",
             type="primary",
             on_click=add_from_state,
             use_container_width=True,
+            key="add_btn",
         )
 
 st.divider()
 
-# ---------- Filter (Status) ----------
+# ---------- Filter + Counts ----------
 all_tasks = controller.list()
 open_count = sum(1 for t in all_tasks if not t.done)
 done_count = sum(1 for t in all_tasks if t.done)
@@ -101,7 +175,8 @@ if hasattr(st, "segmented_control"):
         "Filter",
         options=["Alle", "Offen", "Erledigt"],
         default="Alle",
-        label_visibility="collapsed",   # <-- DAS entfernt die Überschrift
+        label_visibility="collapsed",
+        key="filter_seg",
     )
 else:
     filter_opt = st.radio(
@@ -109,31 +184,28 @@ else:
         ["Alle", "Offen", "Erledigt"],
         horizontal=True,
         label_visibility="collapsed",
+        key="filter_radio",
     )
 
-st.caption(f"Offen: **{open_count}** · Erledigt: **{done_count}**")
-
-# Filter anwenden
 tasks = all_tasks
 if filter_opt == "Offen":
     tasks = [t for t in all_tasks if not t.done]
 elif filter_opt == "Erledigt":
     tasks = [t for t in all_tasks if t.done]
 
-st.subheader(f"Aufgaben ({len(tasks)})")
+st.subheader(f"Aufgaben ({len(tasks)}) · Offen: {open_count} · Erledigt: {done_count}")
 
-# ---------- List: jede Aufgabe eigene Karte, weniger Abstand (kein extra st.write) ----------
+# ------------------- LISTE: Titel + Datum in einer Zeile -------------------
 if not tasks:
     st.info("Noch keine Aufgaben.")
 else:
     for t in tasks:
         with st.container(border=True):
             editing = (st.session_state.get("editing_id") == t.id)
-            title_key = f"title_{t.id}"
 
-            # stabiler Textwert im State (ohne Layout-Sprung)
-            if title_key not in st.session_state:
-                st.session_state[title_key] = t.title
+            st.session_state.setdefault(f"title_{t.id}", t.title)
+            st.session_state.setdefault(f"due_enabled_{t.id}", t.due_date is not None)
+            st.session_state.setdefault(f"due_{t.id}", t.due_date or date.today())
 
             if editing:
                 col_chk, col_main, col_save, col_cancel = st.columns(
@@ -154,28 +226,73 @@ else:
                     value=t.done,
                     key=f"done_{t.id}",
                     label_visibility="collapsed",
-                    on_change=on_toggle,
+                    on_change=on_toggle_done,
                     args=(t.id,),
                 )
 
             with col_main:
-                # gleicher Widget-Typ in beiden Zuständen -> kein Springen
+                c_title, c_due = st.columns([0.80, 0.20], vertical_alignment="bottom")
+
                 if editing:
-                    st.text_input(
-                        "Titel",
-                        key=title_key,
-                        label_visibility="collapsed",
-                    )
+                    with c_title:
+                        st.text_input(
+                            "Titel",
+                            key=f"title_{t.id}",
+                            label_visibility="collapsed",
+                        )
+
+                    with c_due:
+                        if not st.session_state[f"due_enabled_{t.id}"]:
+                            st.button(
+                                "Datum",
+                                icon=":material/event:",
+                                type="tertiary",
+                                on_click=enable_task_due,
+                                args=(t.id,),
+                                use_container_width=True,
+                                key=f"due_btn_{t.id}",
+                            )
+                        else:
+                            d1, d2 = st.columns([0.86, 0.14], vertical_alignment="bottom")
+                            with d1:
+                                st.date_input(
+                                    "Fällig",
+                                    key=f"due_{t.id}",
+                                    value=st.session_state[f"due_{t.id}"],
+                                    label_visibility="collapsed",
+                                    format="DD.MM.YYYY",
+                                )
+                            with d2:
+                                st.button(
+                                    "\u200b",
+                                    icon=":material/event_busy:",
+                                    type="tertiary",
+                                    help="Datum entfernen",
+                                    on_click=clear_task_due,
+                                    args=(t.id,),
+                                    use_container_width=True,
+                                    key=f"due_clear_{t.id}",
+                                )
+
                 else:
-                    # Anzeige als disabled TextInput (stabil, ohne CSS)
-                    display = f"✓ {t.title}" if t.done else t.title
-                    st.session_state[title_key] = display
-                    st.text_input(
-                        "Titel",
-                        key=title_key,
-                        label_visibility="collapsed",
-                        disabled=True,
-                    )
+                    with c_title:
+                        st.session_state[f"title_{t.id}"] = f"✓ {t.title}" if t.done else t.title
+                        st.text_input(
+                            "Titel",
+                            key=f"title_{t.id}",
+                            label_visibility="collapsed",
+                            disabled=True,
+                        )
+
+                    with c_due:
+                        due_display = t.due_date.strftime("%d.%m.%y") if t.due_date else "—"
+                        st.session_state[f"due_display_{t.id}"] = due_display
+                        st.text_input(
+                            "Fällig",
+                            key=f"due_display_{t.id}",
+                            label_visibility="collapsed",
+                            disabled=True,
+                        )
 
             if editing:
                 with col_save:
@@ -196,7 +313,7 @@ else:
                         help="Abbrechen",
                         key=f"cancel_{t.id}",
                         on_click=on_cancel,
-                        args=(t.id, t.title),
+                        args=(t.id, t.title, t.due_date),
                     )
             else:
                 with col_edit:
@@ -207,7 +324,7 @@ else:
                         help="Bearbeiten",
                         key=f"edit_{t.id}",
                         on_click=on_edit,
-                        args=(t.id, t.title),
+                        args=(t.id, t.title, t.due_date),
                     )
                 with col_del:
                     st.button(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import List, MutableMapping
 from model.entities import Task
 
@@ -38,13 +39,20 @@ class SessionStateTaskRepository:
     def set_done(self, task_id: int, done: bool) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=done) if t.id == task_id else t
+            Task(id=t.id, title=t.title, done=done, due_date=t.due_date) if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]
 
     def rename(self, task_id: int, new_title: str) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=new_title, done=t.done) if t.id == task_id else t
+            Task(id=t.id, title=new_title, done=t.done, due_date=t.due_date) if t.id == task_id else t
+            for t in self._state[TASKS_KEY]
+        ]
+
+    def set_due_date(self, task_id: int, due_date: date | None) -> None:
+        self.ensure_initialized()
+        self._state[TASKS_KEY] = [
+            Task(id=t.id, title=t.title, done=t.done, due_date=due_date) if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]

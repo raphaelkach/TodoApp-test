@@ -96,14 +96,15 @@ Mögliche Szenarien:
 
 
 Funktionale Anforderungen
-- Die App soll es dem Nutzer ermöglichen, innerhalb von maximal 5 Sekunden eine neue Aufgabe mit Titel anzulegen.
 - Todo löschen
 - Todo bearbeiten
 - Todo als erledigt markieren
 - Das System muss Aufgaben in einer Liste anzeigen.
-- Der Nutzer soll Aufgaben bis zu fünf Kategorien zuordnen können, die er selbst erstellen und löschen kann.
 - Das System soll Aufgaben nach Status (offen/erledigt) filtern können.
+
+- Der Nutzer soll Aufgaben bis zu fünf Kategorien zuordnen können, die er selbst erstellen und löschen kann.
 - Jede Aufgabe soll ein Fälligkeitsdatum enthalten können, das über einen Kalenderpicker in unter 3 Klicks ausgewählt werden kann.
+- Die App soll es dem Nutzer ermöglichen, innerhalb von maximal 5 Sekunden eine neue Aufgabe mit Titel anzulegen.
 
 
 ## Update Prompts
