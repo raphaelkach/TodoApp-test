@@ -25,8 +25,14 @@ class TodoController:
     def delete_category(self, name: str) -> None:
         self.service.delete_category(name)
 
-    def add(self, title: str, due_date: date | None = None, category: str | None = None) -> None:
-        self.service.add_task(title, due_date, category)
+    def add(
+        self,
+        title: str,
+        due_date: date | None = None,
+        category: str | None = None,
+        priority: str = "Mittel",
+    ) -> None:
+        self.service.add_task(title, due_date, category, priority)
 
     def list(self) -> List[Task]:
         return self.service.list_tasks()
@@ -45,3 +51,6 @@ class TodoController:
 
     def set_category(self, task_id: int, category: str | None) -> None:
         self.service.set_category(task_id, category)
+
+    def set_priority(self, task_id: int, priority: str) -> None:
+        self.service.set_priority(task_id, priority)

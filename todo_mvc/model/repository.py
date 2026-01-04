@@ -38,45 +38,89 @@ class SessionStateTaskRepository:
 
     def delete(self, task_id: int) -> None:
         self.ensure_initialized()
-        self._state[TASKS_KEY] = [
-            t for t in self._state[TASKS_KEY] if t.id != task_id]
+        self._state[TASKS_KEY] = [t for t in self._state[TASKS_KEY] if t.id != task_id]
 
     def set_done(self, task_id: int, done: bool) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=done,
-                 due_date=t.due_date, category=t.category)
-            if t.id == task_id else t
+            Task(
+                id=t.id,
+                title=t.title,
+                done=done,
+                due_date=t.due_date,
+                category=t.category,
+                priority=t.priority,
+            )
+            if t.id == task_id
+            else t
             for t in self._state[TASKS_KEY]
         ]
 
     def rename_task(self, task_id: int, new_title: str) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=new_title, done=t.done,
-                 due_date=t.due_date, category=t.category)
-            if t.id == task_id else t
+            Task(
+                id=t.id,
+                title=new_title,
+                done=t.done,
+                due_date=t.due_date,
+                category=t.category,
+                priority=t.priority,
+            )
+            if t.id == task_id
+            else t
             for t in self._state[TASKS_KEY]
         ]
 
     def set_due_date(self, task_id: int, due_date: date | None) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done,
-                 due_date=due_date, category=t.category)
-            if t.id == task_id else t
+            Task(
+                id=t.id,
+                title=t.title,
+                done=t.done,
+                due_date=due_date,
+                category=t.category,
+                priority=t.priority,
+            )
+            if t.id == task_id
+            else t
             for t in self._state[TASKS_KEY]
         ]
 
     def set_category(self, task_id: int, category: str | None) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done,
-                 due_date=t.due_date, category=category)
-            if t.id == task_id else t
+            Task(
+                id=t.id,
+                title=t.title,
+                done=t.done,
+                due_date=t.due_date,
+                category=category,
+                priority=t.priority,
+            )
+            if t.id == task_id
+            else t
             for t in self._state[TASKS_KEY]
         ]
 
+    def set_priority(self, task_id: int, priority: str) -> None:
+        self.ensure_initialized()
+        self._state[TASKS_KEY] = [
+            Task(
+                id=t.id,
+                title=t.title,
+                done=t.done,
+                due_date=t.due_date,
+                category=t.category,
+                priority=priority,
+            )
+            if t.id == task_id
+            else t
+            for t in self._state[TASKS_KEY]
+        ]
+
+    # ---------- Categories ----------
     def list_categories(self) -> List[str]:
         self.ensure_initialized()
         return list(self._state[CATEGORIES_KEY])
@@ -111,8 +155,14 @@ class SessionStateTaskRepository:
         self._state[CATEGORIES_KEY] = [new if c == old else c for c in cats]
 
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done, due_date=t.due_date,
-                 category=(new if t.category == old else t.category))
+            Task(
+                id=t.id,
+                title=t.title,
+                done=t.done,
+                due_date=t.due_date,
+                category=(new if t.category == old else t.category),
+                priority=t.priority,
+            )
             for t in self._state[TASKS_KEY]
         ]
 
@@ -135,6 +185,7 @@ class SessionStateTaskRepository:
                 done=t.done,
                 due_date=t.due_date,
                 category=(None if t.category == name else t.category),
+                priority=t.priority,
             )
             for t in self._state[TASKS_KEY]
         ]

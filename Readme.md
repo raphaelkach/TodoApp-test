@@ -119,26 +119,41 @@ Ein Nutzer kann bis zu fünf eigene Kategorien anlegen, umbenennen und löschen;
 
 
 ## Update Prompts
+Dabei schauen ob all diese Anforderungen erfüllt sind und auch unnötiges was falsch ist in Vipe-Coding.
+
+
+Anforderungen:
+- Modellierung der Todo-App nach dem MVC-Architekturmuster
+    - Für jede der drei MVC-Schichten mindestens die folgenden Elemente definieren:
+        - Model:
+            - zentrale Domänenobjekte (z. B. „Task“), Datenzugriff, Validierungslogik
+        - View:
+            - UI-Elemente
+        - Controller:
+            - Steuerungslogik
+            - Methoden für das Anlegen, Ändern, Löschen und Anzeigen von Aufgaben
+- Session State initialisieren
+- Möglichkeit Aufgaben hinzufügen (Textfeld, Button, … )
+- Übernehmen Sie die Aufgabe in die Liste im Session State
+- Lassen Sie Aufgaben mit Checkboxen anzeigen
+- Löschfunktion
+- Die Todo-App in Streamlit soll in einem responsive Design umgesetzt werden, welchen für die Geräte Desktop und Smartphone gut aussieht und benutzerfreundlich ist.
+- Todo löschen
+- Todo bearbeiten
+- Todo als erledigt markieren
+- Das System muss Aufgaben in einer Liste anzeigen.
+- Das System soll Aufgaben nach Status (offen/erledigt) filtern können.
+- Jede Aufgabe soll ein Fälligkeitsdatum enthalten können, das über einen Kalenderpicker in unter 3 Klicks ausgewählt werden kann.
+- Der Nutzer soll Aufgaben bis zu fünf Kategorien zuordnen können, die er selbst erstellen und löschen kann.
+
 Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit. 
-Ich möchte eine Todo App mit streamlit machen nach der Architektur von MVC. Wie baut man das richtig nach der Vorlesung
 
-Ich möchte erstmal hier mit Starten nach MVC:
-Aufgabe: Eine funktionale, minimalistische TODO-App erstellen. 
-
-- Grundfunktionen: 
-    - Session State initialisieren
-    - Möglichkeit Aufgaben hinzufügen (Textfeld, Button, … )
-    - Übernehmen Sie die Aufgabe in die Liste im Session State
-    - Lassen Sie Aufgaben mit Checkboxen anzeigen
-    - Löschfunktion
-
-Für die Icons sollen immer die Icons von Google genutzt werden als: https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web. Dabei sollen ausschließlich diese Icons genutzt werden und keine Emojis
+Für die Icons soll immer die Icons von Google genutzt werden (https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web). Dabei sollen ausschließlich diese Icons genutzt werden und keine Emojis
 
 
 
 
-Übung: Responsive TODO-App in Streamlit
-- Aufgabe: Implementieren Sie ein responsives Design für die TODOApp in Streamlit, das auf verschiedenen Geräte (Desktop, Smartphone) gut aussieht und benutzerfreundlich ist
 
-
-
+- 2. Kurze Beschreibung der Architektur
+    - Verfassen Sie eine Begründung (max. 10 Sätze), warum MVC für diese Anwendung geeignet ist
+    - Beschreiben Sie kurz die Verantwortlichkeiten jeder Komponente.

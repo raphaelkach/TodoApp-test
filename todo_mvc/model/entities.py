@@ -11,3 +11,4 @@ class Task:
     done: bool = False
     due_date: date | None = None
     category: str | None = None
+    priority: str = "Mittel"  # "Niedrig" | "Mittel" | "Hoch"

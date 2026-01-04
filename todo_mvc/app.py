@@ -30,6 +30,13 @@ st.markdown(
 CATEGORY_NONE_LABEL = "Kategorie auswählen"
 FILTER_RAW_VALUES = {"Alle", "Offen", "Erledigt"}
 
+PRIORITY_OPTIONS = ["Niedrig", "Mittel", "Hoch"]
+PRIO_ICON = {
+    "Niedrig": ":material/signal_cellular_1_bar:",
+    "Mittel": ":material/signal_cellular_2_bar:",
+    "Hoch": ":material/signal_cellular_4_bar:",
+}
+
 # ---------- MVC Wiring ----------
 repo = SessionStateTaskRepository(st.session_state)
 service = TodoService(repo)
@@ -42,6 +49,7 @@ st.session_state.setdefault("editing_id", None)
 # Add form state
 st.session_state.setdefault("new_title", "")
 st.session_state.setdefault("add_due_date", None)
+st.session_state.setdefault("new_priority", "Mittel")
 st.session_state.setdefault("new_category", CATEGORY_NONE_LABEL)
 
 # Category management state
@@ -94,7 +102,15 @@ def get_filter_raw() -> str:
     return "Alle"
 
 
-# Category actions
+def prio_icon(priority: str) -> str:
+    return PRIO_ICON.get(priority, PRIO_ICON["Mittel"])
+
+
+def task_priority(t) -> str:
+    return getattr(t, "priority", "Mittel")
+
+
+# ---------- Category actions ----------
 def add_category() -> None:
     name = (st.session_state.get("cat_new_name") or "").strip()
     if not name:
@@ -145,10 +161,21 @@ def category_dialog() -> None:
     current = cats()
     can_add = len(current) < 5
 
-    st.text_input("Neue Kategorie", key="cat_new_name",
-                  placeholder="z.B. Uni, Haushalt …", disabled=not can_add)
-    st.button("Anlegen", icon=":material/add:", type="primary", on_click=add_category,
-              key="cat_add_btn", use_container_width=True, disabled=not can_add)
+    st.text_input(
+        "Neue Kategorie",
+        key="cat_new_name",
+        placeholder="z.B. Uni, Haushalt …",
+        disabled=not can_add,
+    )
+    st.button(
+        "Anlegen",
+        icon=":material/add:",
+        type="primary",
+        on_click=add_category,
+        key="cat_add_btn",
+        use_container_width=True,
+        disabled=not can_add,
+    )
     if not can_add:
         st.caption("Maximal 5 Kategorien möglich.")
 
@@ -163,14 +190,20 @@ def category_dialog() -> None:
 
     for i, c in enumerate(current):
         if rename_target == c:
-            a, b, d = st.columns([0.70, 0.15, 0.15],
-                                 vertical_alignment="center")
+            a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
             with a:
-                st.text_input("Umbenennen", key="cat_rename_value",
-                              label_visibility="collapsed")
+                st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
             with b:
-                st.button("\u200b", icon=":material/save:", type="tertiary",
-                          key=f"cat_save_{i}", on_click=save_rename_category, args=(c,), help="Speichern", use_container_width=True)
+                st.button(
+                    "\u200b",
+                    icon=":material/save:",
+                    type="tertiary",
+                    key=f"cat_save_{i}",
+                    on_click=save_rename_category,
+                    args=(c,),
+                    help="Speichern",
+                    use_container_width=True,
+                )
             with d:
                 st.button(
                     "\u200b",
@@ -182,16 +215,31 @@ def category_dialog() -> None:
                     use_container_width=True,
                 )
         else:
-            a, b, d = st.columns([0.70, 0.15, 0.15],
-                                 vertical_alignment="center")
+            a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
             with a:
                 st.write(c)
             with b:
-                st.button("\u200b", icon=":material/edit:", type="tertiary",
-                          key=f"cat_edit_{i}", on_click=start_rename_category, args=(c), help="Umbenennen", use_container_width=True)
+                st.button(
+                    "\u200b",
+                    icon=":material/edit:",
+                    type="tertiary",
+                    key=f"cat_edit_{i}",
+                    on_click=start_rename_category,
+                    args=(c,),
+                    help="Umbenennen",
+                    use_container_width=True,
+                )
             with d:
-                st.button("\u200b", icon=":material/delete:", type="tertiary",
-                          key=f"cat_del_{i}", on_click=delete_category, args=(c), help="Löschen", use_container_width=True)
+                st.button(
+                    "\u200b",
+                    icon=":material/delete:",
+                    type="tertiary",
+                    key=f"cat_del_{i}",
+                    on_click=delete_category,
+                    args=(c,),
+                    help="Löschen",
+                    use_container_width=True,
+                )
 
 
 # ---------- Task actions ----------
@@ -201,12 +249,18 @@ def add_from_state() -> None:
         return
 
     due = st.session_state.get("add_due_date")
-    category = normalize_cat(st.session_state.get(
-        "new_category", CATEGORY_NONE_LABEL))
-    controller.add(title, due, category)
+    category = normalize_cat(st.session_state.get("new_category", CATEGORY_NONE_LABEL))
+    priority = st.session_state.get("new_priority", "Mittel")
+
+    # kompatibel, falls Backend noch kein "priority" kennt
+    try:
+        controller.add(title, due, category, priority)
+    except TypeError:
+        controller.add(title, due, category)
 
     st.session_state["new_title"] = ""
     st.session_state["add_due_date"] = None
+    st.session_state["new_priority"] = "Mittel"
     st.session_state["new_category"] = CATEGORY_NONE_LABEL
 
 
@@ -215,33 +269,49 @@ def on_delete(task_id: int) -> None:
 
 
 def on_toggle_done(task_id: int) -> None:
-    controller.set_done(task_id, bool(
-        st.session_state.get(f"done_{task_id}", False)))
+    controller.set_done(task_id, bool(st.session_state.get(f"done_{task_id}", False)))
 
 
-def on_edit(task_id: int, current_title: str, current_due: date | None, current_cat: str | None) -> None:
+def on_edit(
+    task_id: int,
+    current_title: str,
+    current_due: date | None,
+    current_cat: str | None,
+    current_prio: str,
+) -> None:
     st.session_state["editing_id"] = task_id
     st.session_state[f"title_{task_id}"] = current_title
     st.session_state[f"due_{task_id}"] = current_due
+    st.session_state[f"prio_{task_id}"] = current_prio
     st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
 
 
 def on_save(task_id: int) -> None:
     controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
 
-    due = st.session_state.get(f"due_{task_id}")  # date | None
+    due = st.session_state.get(f"due_{task_id}")
     controller.set_due_date(task_id, due)
 
-    category = normalize_cat(st.session_state.get(
-        f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
+    priority = st.session_state.get(f"prio_{task_id}", "Mittel")
+    if hasattr(controller, "set_priority"):
+        controller.set_priority(task_id, priority)
+
+    category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
     controller.set_category(task_id, category)
 
     st.session_state["editing_id"] = None
 
 
-def on_cancel(task_id: int, original_title: str, original_due: date | None, original_cat: str | None) -> None:
+def on_cancel(
+    task_id: int,
+    original_title: str,
+    original_due: date | None,
+    original_cat: str | None,
+    original_prio: str,
+) -> None:
     st.session_state[f"title_{task_id}"] = original_title
     st.session_state[f"due_{task_id}"] = original_due
+    st.session_state[f"prio_{task_id}"] = original_prio
     st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
     st.session_state["editing_id"] = None
 
@@ -251,48 +321,83 @@ col_add, col_list = st.columns([0.40, 0.60], gap="small")
 # Neue Aufgabe (links)
 with col_add:
     with st.container(border=True):
-        h_left, h_right = st.columns([0.85, 0.15], vertical_alignment="center")
-        with h_left:
-            st.markdown("**Neue Aufgabe**")
-        with h_right:
-            sp, btnc = st.columns([0.55, 0.45], vertical_alignment="center")
-            with btnc:
-                if st.button("\u200b", icon=":material/settings:", type="tertiary", key="open_settings_btn", help="Kategorien verwalten"):
-                    st.session_state["open_cat_dialog"] = True
+        # Header (ohne Settings-Icon) -> gleiche Höhe wie "Aufgabenliste"
+        st.write("**Neue Aufgabe**")
 
+        # Dialog-Trigger sitzt jetzt neben Kategorie-Auswahl (weiter unten)
         if st.session_state.get("open_cat_dialog"):
             category_dialog()
             st.session_state["open_cat_dialog"] = False
 
-        st.text_input("Aufgabe", placeholder="z.B. Folien wiederholen …",
-                      label_visibility="collapsed", key="new_title", on_change=add_from_state)
+        st.text_input(
+            "Aufgabe",
+            placeholder="z.B. Folien wiederholen …",
+            label_visibility="collapsed",
+            key="new_title",
+            on_change=add_from_state,
+        )
 
-        c_dead, c_cat = st.columns([0.30, 0.70], vertical_alignment="bottom")
+        # Deadline + Priorität in EINER Zeile
+        c_dead, c_prio = st.columns([0.55, 0.45], vertical_alignment="bottom")
         with c_dead:
-            st.date_input("Deadline", key="add_due_date", value=st.session_state.get(
-                "add_due_date"), label_visibility="collapsed", format="DD.MM.YYYY")
+            st.date_input(
+                "Deadline",
+                key="add_due_date",
+                value=st.session_state.get("add_due_date"),
+                label_visibility="collapsed",
+                format="DD.MM.YYYY",
+            )
+        with c_prio:
+            st.selectbox(
+                "Priorität",
+                options=PRIORITY_OPTIONS,
+                key="new_priority",
+                label_visibility="collapsed",
+            )
 
+        # Kategorie + Settings-Button in EINER Zeile (Button rechts daneben)
+        validate_category_value("new_category")
+        available = cats()
+        disabled = len(available) == 0
+
+        c_cat, c_set = st.columns([0.88, 0.12], vertical_alignment="bottom")
         with c_cat:
-            validate_category_value("new_category")
-            available = cats()
-            disabled = len(available) == 0
+            st.selectbox(
+                "Kategorie",
+                options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                key="new_category",
+                label_visibility="collapsed",
+                disabled=disabled,
+            )
+        with c_set:
+            if st.button(
+                "\u200b",
+                icon=":material/settings:",
+                type="tertiary",
+                key="open_settings_btn_next_to_cat",
+                help="Kategorien verwalten",
+                use_container_width=True,
+            ):
+                st.session_state["open_cat_dialog"] = True
 
-            st.selectbox("Kategorie", options=[CATEGORY_NONE_LABEL] + available if not disabled else [
-                         CATEGORY_NONE_LABEL], key="new_category", label_visibility="collapsed", disabled=disabled)
-
-        # Hinzufügen
-        st.button("Hinzufügen", icon=":material/add_box:", type="primary",
-                  on_click=add_from_state, key="add_btn", use_container_width=True)
+        st.button(
+            "Hinzufügen",
+            icon=":material/add_box:",
+            type="primary",
+            on_click=add_from_state,
+            key="add_btn",
+            use_container_width=True,
+        )
 
 # Aufgabenliste (rechts)
 with col_list:
     with st.container(border=True):
+        st.write("**Aufgabenliste**")
+
         all_tasks = controller.list()
         all_count = len(all_tasks)
         open_count = sum(1 for t in all_tasks if not t.done)
         done_count = sum(1 for t in all_tasks if t.done)
-
-        st.markdown("**Aufgabenliste**")
 
         opt_all = f"Alle ({all_count})"
         opt_open = f"Offen ({open_count})"
@@ -311,14 +416,24 @@ with col_list:
 
         if hasattr(st, "segmented_control"):
             selected = st.segmented_control(
-                "Filter", options=options, default=default_opt, label_visibility="collapsed", key="filter_seg")
+                "Filter",
+                options=options,
+                default=default_opt,
+                label_visibility="collapsed",
+                key="filter_seg",
+            )
         else:
-            selected = st.radio("Filter", options, index=options.index(
-                default_opt), horizontal=True, label_visibility="collapsed", key="filter_radio")
+            selected = st.radio(
+                "Filter",
+                options,
+                index=options.index(default_opt),
+                horizontal=True,
+                label_visibility="collapsed",
+                key="filter_radio",
+            )
 
         if selected is not None:
-            st.session_state["filter_raw"] = normalize_filter_from_label(
-                str(selected))
+            st.session_state["filter_raw"] = normalize_filter_from_label(str(selected))
 
         filter_raw = get_filter_raw()
         if filter_raw == "Offen":
@@ -337,53 +452,82 @@ with col_list:
 
                     if editing:
                         col_chk, col_main, col_save, col_cancel = st.columns(
-                            [0.06, 0.82, 0.06, 0.06], gap="small", vertical_alignment="center")
+                            [0.06, 0.82, 0.06, 0.06],
+                            gap="small",
+                            vertical_alignment="center",
+                        )
                     else:
                         col_chk, col_main, col_edit, col_del = st.columns(
-                            [0.06, 0.82, 0.06, 0.06], gap="small", vertical_alignment="center")
+                            [0.06, 0.82, 0.06, 0.06],
+                            gap="small",
+                            vertical_alignment="center",
+                        )
 
                     with col_chk:
                         st.checkbox(
-                            "Erledigt", value=t.done, key=f"done_{t.id}", label_visibility="collapsed", on_change=on_toggle_done, args=(t.id))
+                            "Erledigt",
+                            value=t.done,
+                            key=f"done_{t.id}",
+                            label_visibility="collapsed",
+                            on_change=on_toggle_done,
+                            args=(t.id,),
+                        )
 
                     with col_main:
-                        left, right = st.columns(
-                            [0.62, 0.38], vertical_alignment="bottom")
+                        left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
 
                         if editing:
+                            st.session_state.setdefault(f"title_{t.id}", t.title)
+                            st.session_state.setdefault(f"due_{t.id}", t.due_date)
+                            st.session_state.setdefault(f"prio_{t.id}", task_priority(t))
                             st.session_state.setdefault(
-                                f"title_{t.id}", t.title)
-                            st.session_state.setdefault(
-                                f"due_{t.id}", t.due_date)
-                            st.session_state.setdefault(
-                                f"cat_sel_{t.id}", t.category if t.category else CATEGORY_NONE_LABEL)
+                                f"cat_sel_{t.id}",
+                                t.category if t.category else CATEGORY_NONE_LABEL,
+                            )
 
                             with left:
-                                st.text_input(
-                                    "Titel", key=f"title_{t.id}", label_visibility="collapsed")
+                                st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
 
                             with right:
-                                r_dead, r_cat = st.columns(
-                                    [0.42, 0.58], vertical_alignment="bottom")
+                                r_dead, r_prio, r_cat = st.columns(
+                                    [0.36, 0.26, 0.38], vertical_alignment="bottom"
+                                )
                                 with r_dead:
-                                    st.date_input("Deadline", key=f"due_{t.id}", value=st.session_state.get(
-                                        f"due_{t.id}"), label_visibility="collapsed", format="DD.MM.YYYY")
+                                    st.date_input(
+                                        "Deadline",
+                                        key=f"due_{t.id}",
+                                        value=st.session_state.get(f"due_{t.id}"),
+                                        label_visibility="collapsed",
+                                        format="DD.MM.YYYY",
+                                    )
+                                with r_prio:
+                                    st.selectbox(
+                                        "Priorität",
+                                        PRIORITY_OPTIONS,
+                                        key=f"prio_{t.id}",
+                                        label_visibility="collapsed",
+                                    )
                                 with r_cat:
                                     key = f"cat_sel_{t.id}"
                                     validate_category_value(key)
                                     available = cats()
                                     disabled = len(available) == 0
-                                    st.selectbox("Kategorie", options=[CATEGORY_NONE_LABEL] + available if not disabled else [
-                                                 CATEGORY_NONE_LABEL], key=key, label_visibility="collapsed", disabled=disabled)
+                                    st.selectbox(
+                                        "Kategorie",
+                                        options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                                        key=key,
+                                        label_visibility="collapsed",
+                                        disabled=disabled,
+                                    )
                         else:
                             with left:
-                                st.markdown(
-                                    f"~~{t.title}~~" if t.done else t.title)
+                                st.markdown(f"~~{t.title}~~" if t.done else t.title)
                             with right:
                                 parts: list[str] = []
+                                pr = task_priority(t)
+                                parts.append(f"{prio_icon(pr)} {pr}")
                                 if t.due_date:
-                                    parts.append(
-                                        f"Deadline: {t.due_date.strftime('%d.%m.%Y')}")
+                                    parts.append(f"Deadline: {t.due_date.strftime('%d.%m.%Y')}")
                                 if t.category:
                                     parts.append(t.category)
                                 if parts:
@@ -391,15 +535,43 @@ with col_list:
 
                     if editing:
                         with col_save:
-                            st.button("\u200b", icon=":material/save:", type="tertiary",
-                                      help="Speichern", key=f"save_{t.id}", on_click=on_save, args=(t.id))
+                            st.button(
+                                "\u200b",
+                                icon=":material/save:",
+                                type="tertiary",
+                                help="Speichern",
+                                key=f"save_{t.id}",
+                                on_click=on_save,
+                                args=(t.id,),
+                            )
                         with col_cancel:
-                            st.button("\u200b", icon=":material/cancel:", type="tertiary", help="Abbrechen",
-                                      key=f"cancel_{t.id}", on_click=on_cancel, args=(t.id, t.title, t.due_date, t.category))
+                            st.button(
+                                "\u200b",
+                                icon=":material/cancel:",
+                                type="tertiary",
+                                help="Abbrechen",
+                                key=f"cancel_{t.id}",
+                                on_click=on_cancel,
+                                args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
+                            )
                     else:
                         with col_edit:
-                            st.button("\u200b", icon=":material/edit:", type="tertiary", help="Bearbeiten",
-                                      key=f"edit_{t.id}", on_click=on_edit, args=(t.id, t.title, t.due_date, t.category))
+                            st.button(
+                                "\u200b",
+                                icon=":material/edit:",
+                                type="tertiary",
+                                help="Bearbeiten",
+                                key=f"edit_{t.id}",
+                                on_click=on_edit,
+                                args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
+                            )
                         with col_del:
-                            st.button("\u200b", icon=":material/delete_forever:", type="tertiary",
-                                      help="Löschen", key=f"del_{t.id}", on_click=on_delete, args=(t.id))
+                            st.button(
+                                "\u200b",
+                                icon=":material/delete_forever:",
+                                type="tertiary",
+                                help="Löschen",
+                                key=f"del_{t.id}",
+                                on_click=on_delete,
+                                args=(t.id,),
+                            )

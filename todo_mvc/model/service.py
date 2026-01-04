@@ -5,6 +5,8 @@ from typing import List
 from model.entities import Task
 from model.repository import SessionStateTaskRepository
 
+PRIORITIES = {"Niedrig", "Mittel", "Hoch"}
+
 
 class TodoService:
     def __init__(self, repo: SessionStateTaskRepository):
@@ -22,8 +24,6 @@ class TodoService:
         name = (name or "").strip()
         if not name:
             return
-        if len(self.repo.list_categories()) >= 5:
-            return
         self.repo.add_category(name)
 
     def rename_category(self, old: str, new: str) -> None:
@@ -36,7 +36,13 @@ class TodoService:
     def delete_category(self, name: str) -> None:
         self.repo.delete_category(name)
 
-    def add_task(self, title: str, due_date: date | None = None, category: str | None = None) -> None:
+    def add_task(
+        self,
+        title: str,
+        due_date: date | None = None,
+        category: str | None = None,
+        priority: str = "Mittel",
+    ) -> None:
         title = (title or "").strip()
         if not title:
             return
@@ -45,6 +51,10 @@ class TodoService:
         if category is not None and category not in set(self.repo.list_categories()):
             category = None
 
+        priority = (priority or "").strip().capitalize()
+        if priority not in PRIORITIES:
+            priority = "Mittel"
+
         self.repo.add(
             Task(
                 id=self.repo.next_id(),
@@ -52,6 +62,7 @@ class TodoService:
                 done=False,
                 due_date=due_date,
                 category=category,
+                priority=priority,
             )
         )
 
@@ -78,3 +89,9 @@ class TodoService:
         if category is not None and category not in set(self.repo.list_categories()):
             category = None
         self.repo.set_category(task_id, category)
+
+    def set_priority(self, task_id: int, priority: str) -> None:
+        priority = (priority or "").strip().capitalize()
+        if priority not in PRIORITIES:
+            priority = "Mittel"
+        self.repo.set_priority(task_id, priority)
