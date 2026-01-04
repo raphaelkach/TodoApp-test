@@ -1,5 +1,4 @@
 # Übung: Minimaler Aufbau TODO-App mit Streamlit (30 min)
-
 Versuchen umzusetzen:
 - Software-Qualitätseigenschaften gemäß ISO 25010
 
@@ -99,14 +98,24 @@ Funktionale Anforderungen
 - Das System muss Aufgaben in einer Liste anzeigen.
 - Das System soll Aufgaben nach Status (offen/erledigt) filtern können.
 - Jede Aufgabe soll ein Fälligkeitsdatum enthalten können, das über einen Kalenderpicker in unter 3 Klicks ausgewählt werden kann.
-
 - Der Nutzer soll Aufgaben bis zu fünf Kategorien zuordnen können, die er selbst erstellen und löschen kann.
+
 - Die App soll es dem Nutzer ermöglichen, innerhalb von maximal 5 Sekunden eine neue Aufgabe mit Titel anzulegen.
 
 
 
 
 Ein Nutzer kann bis zu fünf eigene Kategorien anlegen, umbenennen und löschen; jede Aufgabe ist dabei optional genau einer Kategorie zugeordnet, und beim Löschen einer Kategorie werden alle zugehörigen Aufgaben automatisch unkategorisiert.
+
+
+
+
+
+
+
+
+
+
 
 
 ## Update Prompts
@@ -124,3 +133,12 @@ Aufgabe: Eine funktionale, minimalistische TODO-App erstellen.
     - Löschfunktion
 
 Für die Icons sollen immer die Icons von Google genutzt werden als: https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web. Dabei sollen ausschließlich diese Icons genutzt werden und keine Emojis
+
+
+
+
+Übung: Responsive TODO-App in Streamlit
+- Aufgabe: Implementieren Sie ein responsives Design für die TODOApp in Streamlit, das auf verschiedenen Geräte (Desktop, Smartphone) gut aussieht und benutzerfreundlich ist
+
+
+

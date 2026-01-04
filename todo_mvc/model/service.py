@@ -13,7 +13,6 @@ class TodoService:
     def initialize(self) -> None:
         self.repo.ensure_initialized()
 
-    # ---------- Categories ----------
     def list_categories(self) -> List[str]:
         cats = self.repo.list_categories()
         cats.sort(key=lambda x: x.lower())
@@ -37,7 +36,6 @@ class TodoService:
     def delete_category(self, name: str) -> None:
         self.repo.delete_category(name)
 
-    # ---------- Tasks ----------
     def add_task(self, title: str, due_date: date | None = None, category: str | None = None) -> None:
         title = (title or "").strip()
         if not title:

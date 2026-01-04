@@ -72,7 +72,6 @@ class SessionStateTaskRepository:
             for t in self._state[TASKS_KEY]
         ]
 
-    # ---------- Categories ----------
     def list_categories(self) -> List[str]:
         self.ensure_initialized()
         return list(self._state[CATEGORIES_KEY])
@@ -104,10 +103,8 @@ class SessionStateTaskRepository:
         if new in cats and new != old:
             return
 
-        # categories list update
         self._state[CATEGORIES_KEY] = [new if c == old else c for c in cats]
 
-        # tasks update
         self._state[TASKS_KEY] = [
             Task(id=t.id, title=t.title, done=t.done, due_date=t.due_date, category=(new if t.category == old else t.category))
             for t in self._state[TASKS_KEY]
@@ -125,7 +122,6 @@ class SessionStateTaskRepository:
 
         self._state[CATEGORIES_KEY] = [c for c in cats if c != name]
 
-        # beim Löschen: alle Tasks "unkategorisieren"
         self._state[TASKS_KEY] = [
             Task(
                 id=t.id,
