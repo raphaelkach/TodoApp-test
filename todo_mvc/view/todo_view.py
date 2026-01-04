@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date
-import html as _html
 import streamlit as st
 
 from controller.todo_controller import TodoController
@@ -78,17 +77,6 @@ def render_app(controller: TodoController) -> None:
 
     def task_priority(t) -> str:
         return getattr(t, "priority", "Mittel")
-
-    def render_task_title_centered(title: str, done: bool) -> None:
-        safe = _html.escape(title or "")
-        if done:
-            inner = f"<del>{safe}</del>"
-        else:
-            inner = safe
-        st.markdown(
-            f"<div class='task_title_center'><div class='task_title_text'>{inner}</div></div>",
-            unsafe_allow_html=True,
-        )
 
     # ---------- Category actions ----------
     def add_category() -> None:
@@ -489,14 +477,22 @@ def render_app(controller: TodoController) -> None:
                                         disabled = len(available) == 0
                                         st.selectbox(
                                             "Kategorie",
-                                            options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                                            options=[CATEGORY_NONE_LABEL] + available
+                                            if not disabled
+                                            else [CATEGORY_NONE_LABEL],
                                             key=key,
                                             label_visibility="collapsed",
                                             disabled=disabled,
                                         )
                             else:
+                                # ✅ Umsetzung wie gewünscht:
+                                # offen: st.write(t.title)
+                                # done: st.markdown(f"~~{t.title}~~")
                                 with left:
-                                    render_task_title_centered(t.title, t.done)
+                                    if t.done:
+                                        st.markdown(f"~~{t.title}~~")
+                                    else:
+                                        st.write(t.title)
 
                                 with right:
                                     parts: list[str] = []
