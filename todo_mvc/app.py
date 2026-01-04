@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import html as _html
 import streamlit as st
 
 from controller.todo_controller import TodoController
@@ -27,7 +28,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-CATEGORY_NONE_LABEL = "Kategorie auswählen"
+CATEGORY_NONE_LABEL = "Kategorie wählen"
 FILTER_RAW_VALUES = {"Alle", "Offen", "Erledigt"}
 
 PRIORITY_OPTIONS = ["Niedrig", "Mittel", "Hoch"]
@@ -36,6 +37,9 @@ PRIO_ICON = {
     "Mittel": ":material/signal_cellular_2_bar:",
     "Hoch": ":material/signal_cellular_4_bar:",
 }
+
+EMPTY_LIST_SPACER_REM = 6.5
+
 
 # ---------- MVC Wiring ----------
 repo = SessionStateTaskRepository(st.session_state)
@@ -108,6 +112,18 @@ def prio_icon(priority: str) -> str:
 
 def task_priority(t) -> str:
     return getattr(t, "priority", "Mittel")
+
+
+def render_task_title_centered(title: str, done: bool) -> None:
+    safe = _html.escape(title or "")
+    if done:
+        inner = f"<del>{safe}</del>"
+    else:
+        inner = safe
+    st.markdown(
+        f"<div class='task_title_center'><div class='task_title_text'>{inner}</div></div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------- Category actions ----------
@@ -316,15 +332,13 @@ def on_cancel(
     st.session_state["editing_id"] = None
 
 
-col_add, col_list = st.columns([0.40, 0.60], gap="small")
+col_add, col_list = st.columns([0.30, 0.70], gap="small")
 
 # Neue Aufgabe (links)
 with col_add:
     with st.container(border=True):
-        # Header (ohne Settings-Icon) -> gleiche Höhe wie "Aufgabenliste"
         st.write("**Neue Aufgabe**")
 
-        # Dialog-Trigger sitzt jetzt neben Kategorie-Auswahl (weiter unten)
         if st.session_state.get("open_cat_dialog"):
             category_dialog()
             st.session_state["open_cat_dialog"] = False
@@ -334,11 +348,10 @@ with col_add:
             placeholder="z.B. Folien wiederholen …",
             label_visibility="collapsed",
             key="new_title",
-            on_change=add_from_state,
         )
 
-        # Deadline + Priorität in EINER Zeile
-        c_dead, c_prio = st.columns([0.55, 0.45], vertical_alignment="bottom")
+        # Deadline + Priorität (OHNE Icon)
+        c_dead, c_prio = st.columns([0.48, 0.52], vertical_alignment="bottom")
         with c_dead:
             st.date_input(
                 "Deadline",
@@ -347,6 +360,7 @@ with col_add:
                 label_visibility="collapsed",
                 format="DD.MM.YYYY",
             )
+
         with c_prio:
             st.selectbox(
                 "Priorität",
@@ -355,7 +369,7 @@ with col_add:
                 label_visibility="collapsed",
             )
 
-        # Kategorie + Settings-Button in EINER Zeile (Button rechts daneben)
+        # Kategorie + Settings-Button rechts daneben
         validate_category_value("new_category")
         available = cats()
         disabled = len(available) == 0
@@ -445,6 +459,10 @@ with col_list:
 
         if not tasks:
             st.info("Noch keine Aufgaben.")
+            st.markdown(
+                f"<div style='height:{EMPTY_LIST_SPACER_REM}rem;'></div>",
+                unsafe_allow_html=True,
+            )
         else:
             for t in tasks:
                 with st.container(border=True):
@@ -463,7 +481,9 @@ with col_list:
                             vertical_alignment="center",
                         )
 
+                    # ✅ Checkbox mittig (vertikal + horizontal)
                     with col_chk:
+                        st.markdown("<div class='chk_center'>", unsafe_allow_html=True)
                         st.checkbox(
                             "Erledigt",
                             value=t.done,
@@ -472,9 +492,14 @@ with col_list:
                             on_change=on_toggle_done,
                             args=(t.id,),
                         )
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                     with col_main:
-                        left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
+                        # ✅ Anzeige-Modus: Titel + rechte Infos vertikal mittig zueinander
+                        if editing:
+                            left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
+                        else:
+                            left, right = st.columns([0.62, 0.38], vertical_alignment="center")
 
                         if editing:
                             st.session_state.setdefault(f"title_{t.id}", t.title)
@@ -486,7 +511,11 @@ with col_list:
                             )
 
                             with left:
-                                st.text_input("Titel", key=f"title_{t.id}", label_visibility="collapsed")
+                                st.text_input(
+                                    "Titel",
+                                    key=f"title_{t.id}",
+                                    label_visibility="collapsed",
+                                )
 
                             with right:
                                 r_dead, r_prio, r_cat = st.columns(
@@ -521,7 +550,9 @@ with col_list:
                                     )
                         else:
                             with left:
-                                st.markdown(f"~~{t.title}~~" if t.done else t.title)
+                                # ✅ Titel vertikal mittig in der Task-Zeile
+                                render_task_title_centered(t.title, t.done)
+
                             with right:
                                 parts: list[str] = []
                                 pr = task_priority(t)
