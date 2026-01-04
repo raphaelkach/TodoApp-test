@@ -38,12 +38,14 @@ class SessionStateTaskRepository:
 
     def delete(self, task_id: int) -> None:
         self.ensure_initialized()
-        self._state[TASKS_KEY] = [t for t in self._state[TASKS_KEY] if t.id != task_id]
+        self._state[TASKS_KEY] = [
+            t for t in self._state[TASKS_KEY] if t.id != task_id]
 
     def set_done(self, task_id: int, done: bool) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=done, due_date=t.due_date, category=t.category)
+            Task(id=t.id, title=t.title, done=done,
+                 due_date=t.due_date, category=t.category)
             if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]
@@ -51,7 +53,8 @@ class SessionStateTaskRepository:
     def rename_task(self, task_id: int, new_title: str) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=new_title, done=t.done, due_date=t.due_date, category=t.category)
+            Task(id=t.id, title=new_title, done=t.done,
+                 due_date=t.due_date, category=t.category)
             if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]
@@ -59,7 +62,8 @@ class SessionStateTaskRepository:
     def set_due_date(self, task_id: int, due_date: date | None) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done, due_date=due_date, category=t.category)
+            Task(id=t.id, title=t.title, done=t.done,
+                 due_date=due_date, category=t.category)
             if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]
@@ -67,7 +71,8 @@ class SessionStateTaskRepository:
     def set_category(self, task_id: int, category: str | None) -> None:
         self.ensure_initialized()
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done, due_date=t.due_date, category=category)
+            Task(id=t.id, title=t.title, done=t.done,
+                 due_date=t.due_date, category=category)
             if t.id == task_id else t
             for t in self._state[TASKS_KEY]
         ]
@@ -106,7 +111,8 @@ class SessionStateTaskRepository:
         self._state[CATEGORIES_KEY] = [new if c == old else c for c in cats]
 
         self._state[TASKS_KEY] = [
-            Task(id=t.id, title=t.title, done=t.done, due_date=t.due_date, category=(new if t.category == old else t.category))
+            Task(id=t.id, title=t.title, done=t.done, due_date=t.due_date,
+                 category=(new if t.category == old else t.category))
             for t in self._state[TASKS_KEY]
         ]
 
