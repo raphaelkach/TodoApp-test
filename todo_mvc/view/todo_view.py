@@ -21,7 +21,15 @@ EMPTY_LIST_SPACER_REM = 6.5
 # Schätzung der Höhe der st.info-Box (nur im leeren Zustand sichtbar, bei 1/2 Tasks fehlt sie)
 EMPTY_INFO_EST_REM = 4.58
 
-TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # 4.75
+TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # fix bis 2 Tasks
+
+# --- Layout-Tuning (damit nichts springt & die Felder "am richtigen Platz" sitzen) ---
+# Titel schmaler + rechte Felder rücken nach links (weniger Leerraum zwischen Titel und Deadline)
+TITLE_META_SPLIT = [0.30, 0.70]  # Titel-Bereich | Meta-Bereich (Deadline/Prio/Kat)
+# kleine, konstante "Pad"-Spalte vor dem Titel: View & Edit identisch -> kein Springen
+TITLE_PAD_SPLIT = [0.01, 0.99]
+# Meta-Felder: Deadline braucht Platz, Kategorie braucht Platz, Prio weniger
+META_SPLIT = [0.34, 0.33, 0.38]  # Deadline | Priorität | Kategorie
 
 
 def render_app(controller: TodoController) -> None:
@@ -236,9 +244,7 @@ def render_app(controller: TodoController) -> None:
             return
 
         due = st.session_state.get("add_due_date")
-        category = normalize_cat(
-            st.session_state.get("new_category", CATEGORY_NONE_LABEL)
-        )
+        category = normalize_cat(st.session_state.get("new_category", CATEGORY_NONE_LABEL))
         priority = st.session_state.get("new_priority", "Mittel")
 
         controller.add(title, due, category, priority)
@@ -265,9 +271,7 @@ def render_app(controller: TodoController) -> None:
         st.session_state[f"title_{task_id}"] = current_title
         st.session_state[f"due_{task_id}"] = current_due
         st.session_state[f"prio_{task_id}"] = current_prio
-        st.session_state[f"cat_sel_{task_id}"] = (
-            current_cat if current_cat else CATEGORY_NONE_LABEL
-        )
+        st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
 
     def on_save(task_id: int) -> None:
         controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
@@ -278,9 +282,7 @@ def render_app(controller: TodoController) -> None:
         priority = st.session_state.get(f"prio_{task_id}", "Mittel")
         controller.set_priority(task_id, priority)
 
-        category = normalize_cat(
-            st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL)
-        )
+        category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
         controller.set_category(task_id, category)
 
         st.session_state["editing_id"] = None
@@ -295,9 +297,7 @@ def render_app(controller: TodoController) -> None:
         st.session_state[f"title_{task_id}"] = original_title
         st.session_state[f"due_{task_id}"] = original_due
         st.session_state[f"prio_{task_id}"] = original_prio
-        st.session_state[f"cat_sel_{task_id}"] = (
-            original_cat if original_cat else CATEGORY_NONE_LABEL
-        )
+        st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
         st.session_state["editing_id"] = None
 
     # ---------- Layout ----------
@@ -347,9 +347,7 @@ def render_app(controller: TodoController) -> None:
             with c_cat:
                 st.selectbox(
                     "Kategorie",
-                    options=[CATEGORY_NONE_LABEL] + available
-                    if not disabled
-                    else [CATEGORY_NONE_LABEL],
+                    options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
                     key="new_category",
                     label_visibility="collapsed",
                     disabled=disabled,
@@ -461,35 +459,48 @@ def render_app(controller: TodoController) -> None:
                             )
 
                         with col_main:
-                            if editing:
-                                left, right = st.columns([0.48, 0.52], vertical_alignment="bottom")
-                            else:
-                                left, right = st.columns(
-                                    [0.62, 0.38], vertical_alignment="center"
+                            title_area, meta_area = st.columns(
+                                TITLE_META_SPLIT,
+                                vertical_alignment="bottom" if editing else "center",
+                                gap="small",
+                            )
+
+                            # --- Titel (View + Edit: identische Struktur -> kein „Springen“) ---
+                            with title_area:
+                                _pad, title_content = st.columns(TITLE_PAD_SPLIT, gap="small")
+
+                                if editing:
+                                    st.session_state.setdefault(f"title_{t.id}", t.title)
+                                    with title_content:
+                                        st.text_input(
+                                            "Titel",
+                                            key=f"title_{t.id}",
+                                            label_visibility="collapsed",
+                                        )
+                                else:
+                                    with title_content:
+                                        if t.done:
+                                            st.markdown(f"~~{t.title}~~")
+                                        else:
+                                            st.write(t.title)
+
+                            # --- Meta (Deadline / Prio / Kategorie) am „richtigen Platz“ (direkt nach Titel) ---
+                            with meta_area:
+                                m_dead, m_prio, m_cat = st.columns(
+                                    META_SPLIT,
+                                    vertical_alignment="bottom" if editing else "center",
+                                    gap="small",
                                 )
 
-                            if editing:
-                                st.session_state.setdefault(f"title_{t.id}", t.title)
-                                st.session_state.setdefault(f"due_{t.id}", t.due_date)
-                                st.session_state.setdefault(f"prio_{t.id}", task_priority(t))
-                                st.session_state.setdefault(
-                                    f"cat_sel_{t.id}",
-                                    t.category if t.category else CATEGORY_NONE_LABEL,
-                                )
-
-                                with left:
-                                    st.text_input(
-                                        "Titel",
-                                        key=f"title_{t.id}",
-                                        label_visibility="collapsed",
+                                if editing:
+                                    st.session_state.setdefault(f"due_{t.id}", t.due_date)
+                                    st.session_state.setdefault(f"prio_{t.id}", task_priority(t))
+                                    st.session_state.setdefault(
+                                        f"cat_sel_{t.id}",
+                                        t.category if t.category else CATEGORY_NONE_LABEL,
                                     )
 
-                                with right:
-                                    r_dead, r_prio, r_cat = st.columns(
-                                        [0.36, 0.26, 0.38],
-                                        vertical_alignment="bottom",
-                                    )
-                                    with r_dead:
+                                    with m_dead:
                                         st.date_input(
                                             "Deadline",
                                             key=f"due_{t.id}",
@@ -497,14 +508,14 @@ def render_app(controller: TodoController) -> None:
                                             label_visibility="collapsed",
                                             format="DD.MM.YYYY",
                                         )
-                                    with r_prio:
+                                    with m_prio:
                                         st.selectbox(
                                             "Priorität",
                                             PRIORITY_OPTIONS,
                                             key=f"prio_{t.id}",
                                             label_visibility="collapsed",
                                         )
-                                    with r_cat:
+                                    with m_cat:
                                         key = f"cat_sel_{t.id}"
                                         validate_category_value(key)
                                         available = cats()
@@ -518,25 +529,20 @@ def render_app(controller: TodoController) -> None:
                                             label_visibility="collapsed",
                                             disabled=disabled,
                                         )
-                            else:
-                                with left:
-                                    if t.done:
-                                        st.markdown(f"~~{t.title}~~")
-                                    else:
-                                        st.write(t.title)
-
-                                with right:
-                                    parts: list[str] = []
+                                else:
                                     pr = task_priority(t)
-                                    parts.append(f"{prio_icon(pr)} {pr}")
-                                    if t.due_date:
-                                        parts.append(
-                                            f"Deadline: {t.due_date.strftime('%d.%m.%Y')}"
-                                        )
-                                    if t.category:
-                                        parts.append(t.category)
-                                    if parts:
-                                        st.caption(" — ".join(parts))
+
+                                    with m_dead:
+                                        if t.due_date:
+                                            st.caption(t.due_date.strftime("%d.%m.%Y"))
+                                        else:
+                                            st.caption("")
+
+                                    with m_prio:
+                                        st.caption(f"{prio_icon(pr)} {pr}")
+
+                                    with m_cat:
+                                        st.caption(t.category or "")
 
                         if editing:
                             with col_save:
