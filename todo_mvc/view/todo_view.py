@@ -15,7 +15,13 @@ PRIO_ICON = {
     "Hoch": ":material/signal_cellular_4_bar:",
 }
 
+# Basis-Spacer (wie vorher im leeren Zustand)
 EMPTY_LIST_SPACER_REM = 6.5
+
+# Schätzung der Höhe der st.info-Box (nur im leeren Zustand sichtbar, bei 1/2 Tasks fehlt sie)
+EMPTY_INFO_EST_REM = 4.58
+
+TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # 4.75
 
 
 def render_app(controller: TodoController) -> None:
@@ -77,6 +83,23 @@ def render_app(controller: TodoController) -> None:
 
     def task_priority(t) -> str:
         return getattr(t, "priority", "Mittel")
+
+    def render_list_spacer_if_needed(displayed_count: int) -> None:
+        if displayed_count > 2:
+            return
+
+        if displayed_count == 0:
+            rem = EMPTY_LIST_SPACER_REM
+        else:
+            rem = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) - (
+                displayed_count * TASK_CARD_EST_REM
+            )
+
+        if rem > 0:
+            st.markdown(
+                f"<div style='height:{rem}rem;'></div>",
+                unsafe_allow_html=True,
+            )
 
     # ---------- Category actions ----------
     def add_category() -> None:
@@ -155,7 +178,9 @@ def render_app(controller: TodoController) -> None:
             if rename_target == c:
                 a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
                 with a:
-                    st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
+                    st.text_input(
+                        "Umbenennen", key="cat_rename_value", label_visibility="collapsed"
+                    )
                 with b:
                     st.button(
                         "\u200b",
@@ -211,7 +236,9 @@ def render_app(controller: TodoController) -> None:
             return
 
         due = st.session_state.get("add_due_date")
-        category = normalize_cat(st.session_state.get("new_category", CATEGORY_NONE_LABEL))
+        category = normalize_cat(
+            st.session_state.get("new_category", CATEGORY_NONE_LABEL)
+        )
         priority = st.session_state.get("new_priority", "Mittel")
 
         controller.add(title, due, category, priority)
@@ -238,7 +265,9 @@ def render_app(controller: TodoController) -> None:
         st.session_state[f"title_{task_id}"] = current_title
         st.session_state[f"due_{task_id}"] = current_due
         st.session_state[f"prio_{task_id}"] = current_prio
-        st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
+        st.session_state[f"cat_sel_{task_id}"] = (
+            current_cat if current_cat else CATEGORY_NONE_LABEL
+        )
 
     def on_save(task_id: int) -> None:
         controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
@@ -249,7 +278,9 @@ def render_app(controller: TodoController) -> None:
         priority = st.session_state.get(f"prio_{task_id}", "Mittel")
         controller.set_priority(task_id, priority)
 
-        category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
+        category = normalize_cat(
+            st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL)
+        )
         controller.set_category(task_id, category)
 
         st.session_state["editing_id"] = None
@@ -264,7 +295,9 @@ def render_app(controller: TodoController) -> None:
         st.session_state[f"title_{task_id}"] = original_title
         st.session_state[f"due_{task_id}"] = original_due
         st.session_state[f"prio_{task_id}"] = original_prio
-        st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
+        st.session_state[f"cat_sel_{task_id}"] = (
+            original_cat if original_cat else CATEGORY_NONE_LABEL
+        )
         st.session_state["editing_id"] = None
 
     # ---------- Layout ----------
@@ -314,7 +347,9 @@ def render_app(controller: TodoController) -> None:
             with c_cat:
                 st.selectbox(
                     "Kategorie",
-                    options=[CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL],
+                    options=[CATEGORY_NONE_LABEL] + available
+                    if not disabled
+                    else [CATEGORY_NONE_LABEL],
                     key="new_category",
                     label_visibility="collapsed",
                     disabled=disabled,
@@ -395,10 +430,7 @@ def render_app(controller: TodoController) -> None:
 
             if not tasks:
                 st.info("Noch keine Aufgaben.")
-                st.markdown(
-                    f"<div style='height:{EMPTY_LIST_SPACER_REM}rem;'></div>",
-                    unsafe_allow_html=True,
-                )
+                render_list_spacer_if_needed(0)
             else:
                 for t in tasks:
                     with st.container(border=True):
@@ -418,22 +450,23 @@ def render_app(controller: TodoController) -> None:
                             )
 
                         with col_chk:
-                            st.markdown("<div class='chk_center'>", unsafe_allow_html=True)
                             st.checkbox(
-                                "Erledigt",
+                                "\u200b",
                                 value=t.done,
                                 key=f"done_{t.id}",
                                 label_visibility="collapsed",
                                 on_change=on_toggle_done,
                                 args=(t.id,),
+                                help="Als erledigt markieren",
                             )
-                            st.markdown("</div>", unsafe_allow_html=True)
 
                         with col_main:
                             if editing:
-                                left, right = st.columns([0.62, 0.38], vertical_alignment="bottom")
+                                left, right = st.columns([0.48, 0.52], vertical_alignment="bottom")
                             else:
-                                left, right = st.columns([0.62, 0.38], vertical_alignment="center")
+                                left, right = st.columns(
+                                    [0.62, 0.38], vertical_alignment="center"
+                                )
 
                             if editing:
                                 st.session_state.setdefault(f"title_{t.id}", t.title)
@@ -453,7 +486,8 @@ def render_app(controller: TodoController) -> None:
 
                                 with right:
                                     r_dead, r_prio, r_cat = st.columns(
-                                        [0.36, 0.26, 0.38], vertical_alignment="bottom"
+                                        [0.36, 0.26, 0.38],
+                                        vertical_alignment="bottom",
                                     )
                                     with r_dead:
                                         st.date_input(
@@ -485,9 +519,6 @@ def render_app(controller: TodoController) -> None:
                                             disabled=disabled,
                                         )
                             else:
-                                # ✅ Umsetzung wie gewünscht:
-                                # offen: st.write(t.title)
-                                # done: st.markdown(f"~~{t.title}~~")
                                 with left:
                                     if t.done:
                                         st.markdown(f"~~{t.title}~~")
@@ -499,7 +530,9 @@ def render_app(controller: TodoController) -> None:
                                     pr = task_priority(t)
                                     parts.append(f"{prio_icon(pr)} {pr}")
                                     if t.due_date:
-                                        parts.append(f"Deadline: {t.due_date.strftime('%d.%m.%Y')}")
+                                        parts.append(
+                                            f"Deadline: {t.due_date.strftime('%d.%m.%Y')}"
+                                        )
                                     if t.category:
                                         parts.append(t.category)
                                     if parts:
@@ -547,3 +580,6 @@ def render_app(controller: TodoController) -> None:
                                     on_click=on_delete,
                                     args=(t.id,),
                                 )
+
+                # Spacer NACH den Tasks (nur bis inkl. 2 Tasks)
+                render_list_spacer_if_needed(len(tasks))

@@ -26,6 +26,31 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ---- Minimal CSS: Checkbox horizontal + vertikal mittig ----
+st.markdown(
+    """
+    <style>
+      div[data-testid="stCheckbox"]{
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+
+        /* Optional: falls optisch zu tief -> Wert ggf. -1px / -2px / -3px */
+        transform: translateY(-2px);
+      }
+
+      div[data-testid="stCheckbox"] > label{
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ---------- MVC Wiring ----------
 repo = SessionStateTaskRepository(st.session_state)
 service = TodoService(repo)
