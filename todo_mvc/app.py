@@ -7,7 +7,6 @@ from model.repository import SessionStateTaskRepository
 from model.service import TodoService
 from view.todo_view import render_app
 
-# ✅ 1) Seite insgesamt breiter
 st.set_page_config(page_title="Todo-App", layout="wide")
 
 # ------------------- DEIN CSS: (minimal angepasst: max-width) -------------------
@@ -20,7 +19,7 @@ st.markdown(
         h1 { font-size: 2.2rem !important; }
       }
       @media (min-width: 1100px) {
-        .block-container { max-width: 1200px; } /* ✅ vorher 920px */
+        .block-container { max-width: 1200px; }
       }
     </style>
     """,
