@@ -262,21 +262,17 @@ def render_app(controller: TodoController) -> None:
         current_cat: str | None,
         current_prio: str,
     ) -> None:
-        # Neue Edit-Session für frischen Clear-Button
         st.session_state["_edit_session"] = st.session_state.get("_edit_session", 0) + 1
         
         st.session_state["editing_id"] = task_id
         st.session_state[f"title_{task_id}"] = current_title
         st.session_state[f"prio_{task_id}"] = current_prio
         st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
-
-        # Permanenter Storage für Datum
         st.session_state[f"due_value_{task_id}"] = current_due
 
     def on_save(task_id: int) -> None:
         controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
 
-        # Datum aus permanentem Storage holen (wurde im Widget synchronisiert)
         due = st.session_state.get(f"due_value_{task_id}")
         controller.set_due_date(task_id, due)
 
@@ -285,8 +281,7 @@ def render_app(controller: TodoController) -> None:
 
         category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
         controller.set_category(task_id, category)
-
-        # Aufräumen
+        
         st.session_state.pop(f"due_value_{task_id}", None)
         st.session_state["editing_id"] = None
 
@@ -301,7 +296,6 @@ def render_app(controller: TodoController) -> None:
         st.session_state[f"prio_{task_id}"] = original_prio
         st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
 
-        # Aufräumen
         st.session_state.pop(f"due_value_{task_id}", None)
         st.session_state["editing_id"] = None
 
