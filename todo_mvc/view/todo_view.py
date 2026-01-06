@@ -15,10 +15,9 @@ PRIO_ICON = {
     "Hoch": ":material/signal_cellular_4_bar:",
 }
 
-# Basis-Spacer (wie vorher im leeren Zustand)
+# Basis-Spacer
 EMPTY_LIST_SPACER_REM = 6.5
 
-# Schätzung der Höhe der st.info-Box (nur im leeren Zustand sichtbar, bei 1/2 Tasks fehlt sie)
 EMPTY_INFO_EST_REM = 4.58
 
 TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # fix bis 2 Tasks
@@ -26,8 +25,7 @@ TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # fix bis 
 # --- Layout-Tuning ---
 TITLE_META_SPLIT = [0.30, 0.70]   # Titel-Bereich | Meta-Bereich (Deadline/Prio/Kat)
 
-# Deadline schmaler, Prio breiter (wie gewünscht), Kategorie bleibt groß genug
-META_SPLIT = [0.30, 0.32, 0.38]   # Deadline | Priorität | Kategorie
+META_SPLIT = [0.35, 0.27, 0.38]   # Deadline | Priorität | Kategorie
 
 # Abstand Checkbox <-> Titel verringern, Buttons-Bereich
 ROW_COLS_VIEW = [0.035, 0.885, 0.08]   # chk | main | buttons (edit+del)
@@ -328,7 +326,7 @@ def render_app(controller: TodoController) -> None:
                 key="new_title",
             )
 
-            c_dead, c_prio = st.columns([0.48, 0.52], vertical_alignment="bottom")
+            c_dead, c_prio = st.columns([0.51, 0.49], vertical_alignment="bottom")
             with c_dead:
                 st.date_input(
                     "Deadline",
@@ -440,7 +438,6 @@ def render_app(controller: TodoController) -> None:
                     with st.container(border=True):
                         editing = (st.session_state.get("editing_id") == t.id)
 
-                        # Nur 3 Spalten: Checkbox | Main | Buttons
                         col_chk, col_main, col_buttons = st.columns(
                             ROW_COLS_EDIT if editing else ROW_COLS_VIEW,
                             gap="small",
@@ -467,7 +464,6 @@ def render_app(controller: TodoController) -> None:
 
                             # --- Titel (View + Edit identische Struktur -> kein „Springen“) ---
                             with title_area:
-                                # Titel direkt ohne Padding-Spalte
                                 if editing:
                                     st.session_state.setdefault(f"title_{t.id}", t.title)
                                     st.text_input(
@@ -497,16 +493,13 @@ def render_app(controller: TodoController) -> None:
                                     )
 
                                     with m_dead:
-                                        # Dynamischer Key mit Edit-Session für funktionierenden Clear-Button
                                         edit_session = st.session_state.get("_edit_session", 0)
                                         due_key = f"due_input_{t.id}_{edit_session}"
                                         
-                                        # Initialen Wert aus permanentem Storage holen
                                         init_key = f"due_value_{t.id}"
                                         if init_key not in st.session_state:
                                             st.session_state[init_key] = t.due_date
                                         
-                                        # Wenn der dynamische Key noch nicht existiert, initialisieren
                                         if due_key not in st.session_state:
                                             init_val = st.session_state.get(init_key)
                                             if init_val is not None:
@@ -515,12 +508,11 @@ def render_app(controller: TodoController) -> None:
                                         st.date_input(
                                             "Deadline",
                                             key=due_key,
-                                            value=None,  # Ermöglicht Clear-Button
+                                            value=None,
                                             label_visibility="collapsed",
                                             format="DD.MM.YYYY",
                                         )
                                         
-                                        # Wert zurück in permanenten Storage synchronisieren
                                         st.session_state[init_key] = st.session_state.get(due_key)
                                     with m_prio:
                                         st.selectbox(
@@ -600,5 +592,4 @@ def render_app(controller: TodoController) -> None:
                                         args=(t.id,),
                                     )
 
-                # Spacer NACH den Tasks (nur bis inkl. 2 Tasks)
                 render_list_spacer_if_needed(len(tasks))
