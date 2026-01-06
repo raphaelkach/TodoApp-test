@@ -23,13 +23,15 @@ EMPTY_INFO_EST_REM = 4.58
 
 TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2  # fix bis 2 Tasks
 
-# --- Layout-Tuning (damit nichts springt & die Felder "am richtigen Platz" sitzen) ---
-# Titel schmaler + rechte Felder rücken nach links (weniger Leerraum zwischen Titel und Deadline)
-TITLE_META_SPLIT = [0.30, 0.70]  # Titel-Bereich | Meta-Bereich (Deadline/Prio/Kat)
-# kleine, konstante "Pad"-Spalte vor dem Titel: View & Edit identisch -> kein Springen
-TITLE_PAD_SPLIT = [0.01, 0.99]
-# Meta-Felder: Deadline braucht Platz, Kategorie braucht Platz, Prio weniger
-META_SPLIT = [0.34, 0.33, 0.38]  # Deadline | Priorität | Kategorie
+# --- Layout-Tuning ---
+TITLE_META_SPLIT = [0.30, 0.70]   # Titel-Bereich | Meta-Bereich (Deadline/Prio/Kat)
+
+# Deadline schmaler, Prio breiter (wie gewünscht), Kategorie bleibt groß genug
+META_SPLIT = [0.30, 0.32, 0.38]   # Deadline | Priorität | Kategorie
+
+# Abstand Checkbox <-> Titel verringern, Buttons-Bereich
+ROW_COLS_VIEW = [0.035, 0.885, 0.08]   # chk | main | buttons (edit+del)
+ROW_COLS_EDIT = [0.035, 0.885, 0.08]   # chk | main | buttons (save+cancel)
 
 
 def render_app(controller: TodoController) -> None:
@@ -104,10 +106,7 @@ def render_app(controller: TodoController) -> None:
             )
 
         if rem > 0:
-            st.markdown(
-                f"<div style='height:{rem}rem;'></div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"<div style='height:{rem}rem;'></div>", unsafe_allow_html=True)
 
     # ---------- Category actions ----------
     def add_category() -> None:
@@ -186,9 +185,7 @@ def render_app(controller: TodoController) -> None:
             if rename_target == c:
                 a, b, d = st.columns([0.70, 0.15, 0.15], vertical_alignment="center")
                 with a:
-                    st.text_input(
-                        "Umbenennen", key="cat_rename_value", label_visibility="collapsed"
-                    )
+                    st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
                 with b:
                     st.button(
                         "\u200b",
@@ -267,16 +264,22 @@ def render_app(controller: TodoController) -> None:
         current_cat: str | None,
         current_prio: str,
     ) -> None:
+        # Neue Edit-Session für frischen Clear-Button
+        st.session_state["_edit_session"] = st.session_state.get("_edit_session", 0) + 1
+        
         st.session_state["editing_id"] = task_id
         st.session_state[f"title_{task_id}"] = current_title
-        st.session_state[f"due_{task_id}"] = current_due
         st.session_state[f"prio_{task_id}"] = current_prio
         st.session_state[f"cat_sel_{task_id}"] = current_cat if current_cat else CATEGORY_NONE_LABEL
+
+        # Permanenter Storage für Datum
+        st.session_state[f"due_value_{task_id}"] = current_due
 
     def on_save(task_id: int) -> None:
         controller.rename(task_id, st.session_state.get(f"title_{task_id}", ""))
 
-        due = st.session_state.get(f"due_{task_id}")
+        # Datum aus permanentem Storage holen (wurde im Widget synchronisiert)
+        due = st.session_state.get(f"due_value_{task_id}")
         controller.set_due_date(task_id, due)
 
         priority = st.session_state.get(f"prio_{task_id}", "Mittel")
@@ -285,6 +288,8 @@ def render_app(controller: TodoController) -> None:
         category = normalize_cat(st.session_state.get(f"cat_sel_{task_id}", CATEGORY_NONE_LABEL))
         controller.set_category(task_id, category)
 
+        # Aufräumen
+        st.session_state.pop(f"due_value_{task_id}", None)
         st.session_state["editing_id"] = None
 
     def on_cancel(
@@ -295,9 +300,11 @@ def render_app(controller: TodoController) -> None:
         original_prio: str,
     ) -> None:
         st.session_state[f"title_{task_id}"] = original_title
-        st.session_state[f"due_{task_id}"] = original_due
         st.session_state[f"prio_{task_id}"] = original_prio
         st.session_state[f"cat_sel_{task_id}"] = original_cat if original_cat else CATEGORY_NONE_LABEL
+
+        # Aufräumen
+        st.session_state.pop(f"due_value_{task_id}", None)
         st.session_state["editing_id"] = None
 
     # ---------- Layout ----------
@@ -326,11 +333,10 @@ def render_app(controller: TodoController) -> None:
                 st.date_input(
                     "Deadline",
                     key="add_due_date",
-                    value=st.session_state.get("add_due_date"),
+                    value=None,
                     label_visibility="collapsed",
                     format="DD.MM.YYYY",
                 )
-
             with c_prio:
                 st.selectbox(
                     "Priorität",
@@ -434,18 +440,12 @@ def render_app(controller: TodoController) -> None:
                     with st.container(border=True):
                         editing = (st.session_state.get("editing_id") == t.id)
 
-                        if editing:
-                            col_chk, col_main, col_save, col_cancel = st.columns(
-                                [0.06, 0.82, 0.06, 0.06],
-                                gap="small",
-                                vertical_alignment="center",
-                            )
-                        else:
-                            col_chk, col_main, col_edit, col_del = st.columns(
-                                [0.06, 0.82, 0.06, 0.06],
-                                gap="small",
-                                vertical_alignment="center",
-                            )
+                        # Nur 3 Spalten: Checkbox | Main | Buttons
+                        col_chk, col_main, col_buttons = st.columns(
+                            ROW_COLS_EDIT if editing else ROW_COLS_VIEW,
+                            gap="small",
+                            vertical_alignment="center",
+                        )
 
                         with col_chk:
                             st.checkbox(
@@ -465,26 +465,23 @@ def render_app(controller: TodoController) -> None:
                                 gap="small",
                             )
 
-                            # --- Titel (View + Edit: identische Struktur -> kein „Springen“) ---
+                            # --- Titel (View + Edit identische Struktur -> kein „Springen“) ---
                             with title_area:
-                                _pad, title_content = st.columns(TITLE_PAD_SPLIT, gap="small")
-
+                                # Titel direkt ohne Padding-Spalte
                                 if editing:
                                     st.session_state.setdefault(f"title_{t.id}", t.title)
-                                    with title_content:
-                                        st.text_input(
-                                            "Titel",
-                                            key=f"title_{t.id}",
-                                            label_visibility="collapsed",
-                                        )
+                                    st.text_input(
+                                        "Titel",
+                                        key=f"title_{t.id}",
+                                        label_visibility="collapsed",
+                                    )
                                 else:
-                                    with title_content:
-                                        if t.done:
-                                            st.markdown(f"~~{t.title}~~")
-                                        else:
-                                            st.write(t.title)
+                                    if t.done:
+                                        st.markdown(f"~~{t.title}~~")
+                                    else:
+                                        st.write(t.title)
 
-                            # --- Meta (Deadline / Prio / Kategorie) am „richtigen Platz“ (direkt nach Titel) ---
+                            # --- Meta (Deadline / Prio / Kategorie) ---
                             with meta_area:
                                 m_dead, m_prio, m_cat = st.columns(
                                     META_SPLIT,
@@ -493,7 +490,6 @@ def render_app(controller: TodoController) -> None:
                                 )
 
                                 if editing:
-                                    st.session_state.setdefault(f"due_{t.id}", t.due_date)
                                     st.session_state.setdefault(f"prio_{t.id}", task_priority(t))
                                     st.session_state.setdefault(
                                         f"cat_sel_{t.id}",
@@ -501,13 +497,31 @@ def render_app(controller: TodoController) -> None:
                                     )
 
                                     with m_dead:
+                                        # Dynamischer Key mit Edit-Session für funktionierenden Clear-Button
+                                        edit_session = st.session_state.get("_edit_session", 0)
+                                        due_key = f"due_input_{t.id}_{edit_session}"
+                                        
+                                        # Initialen Wert aus permanentem Storage holen
+                                        init_key = f"due_value_{t.id}"
+                                        if init_key not in st.session_state:
+                                            st.session_state[init_key] = t.due_date
+                                        
+                                        # Wenn der dynamische Key noch nicht existiert, initialisieren
+                                        if due_key not in st.session_state:
+                                            init_val = st.session_state.get(init_key)
+                                            if init_val is not None:
+                                                st.session_state[due_key] = init_val
+                                        
                                         st.date_input(
                                             "Deadline",
-                                            key=f"due_{t.id}",
-                                            value=st.session_state.get(f"due_{t.id}"),
+                                            key=due_key,
+                                            value=None,  # Ermöglicht Clear-Button
                                             label_visibility="collapsed",
                                             format="DD.MM.YYYY",
                                         )
+                                        
+                                        # Wert zurück in permanenten Storage synchronisieren
+                                        st.session_state[init_key] = st.session_state.get(due_key)
                                     with m_prio:
                                         st.selectbox(
                                             "Priorität",
@@ -533,59 +547,58 @@ def render_app(controller: TodoController) -> None:
                                     pr = task_priority(t)
 
                                     with m_dead:
-                                        if t.due_date:
-                                            st.caption(t.due_date.strftime("%d.%m.%Y"))
-                                        else:
-                                            st.caption("")
-
+                                        st.caption(t.due_date.strftime("%d.%m.%Y") if t.due_date else "")
                                     with m_prio:
                                         st.caption(f"{prio_icon(pr)} {pr}")
-
                                     with m_cat:
                                         st.caption(t.category or "")
 
                         if editing:
-                            with col_save:
-                                st.button(
-                                    "\u200b",
-                                    icon=":material/save:",
-                                    type="tertiary",
-                                    help="Speichern",
-                                    key=f"save_{t.id}",
-                                    on_click=on_save,
-                                    args=(t.id,),
-                                )
-                            with col_cancel:
-                                st.button(
-                                    "\u200b",
-                                    icon=":material/cancel:",
-                                    type="tertiary",
-                                    help="Abbrechen",
-                                    key=f"cancel_{t.id}",
-                                    on_click=on_cancel,
-                                    args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
-                                )
+                            with col_buttons:
+                                btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+                                with btn1:
+                                    st.button(
+                                        "\u200b",
+                                        icon=":material/save:",
+                                        type="tertiary",
+                                        help="Speichern",
+                                        key=f"save_{t.id}",
+                                        on_click=on_save,
+                                        args=(t.id,),
+                                    )
+                                with btn2:
+                                    st.button(
+                                        "\u200b",
+                                        icon=":material/cancel:",
+                                        type="tertiary",
+                                        help="Abbrechen",
+                                        key=f"cancel_{t.id}",
+                                        on_click=on_cancel,
+                                        args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
+                                    )
                         else:
-                            with col_edit:
-                                st.button(
-                                    "\u200b",
-                                    icon=":material/edit:",
-                                    type="tertiary",
-                                    help="Bearbeiten",
-                                    key=f"edit_{t.id}",
-                                    on_click=on_edit,
-                                    args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
-                                )
-                            with col_del:
-                                st.button(
-                                    "\u200b",
-                                    icon=":material/delete_forever:",
-                                    type="tertiary",
-                                    help="Löschen",
-                                    key=f"del_{t.id}",
-                                    on_click=on_delete,
-                                    args=(t.id,),
-                                )
+                            with col_buttons:
+                                btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+                                with btn1:
+                                    st.button(
+                                        "\u200b",
+                                        icon=":material/edit:",
+                                        type="tertiary",
+                                        help="Bearbeiten",
+                                        key=f"edit_{t.id}",
+                                        on_click=on_edit,
+                                        args=(t.id, t.title, t.due_date, t.category, task_priority(t)),
+                                    )
+                                with btn2:
+                                    st.button(
+                                        "\u200b",
+                                        icon=":material/delete_forever:",
+                                        type="tertiary",
+                                        help="Löschen",
+                                        key=f"del_{t.id}",
+                                        on_click=on_delete,
+                                        args=(t.id,),
+                                    )
 
                 # Spacer NACH den Tasks (nur bis inkl. 2 Tasks)
                 render_list_spacer_if_needed(len(tasks))
