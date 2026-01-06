@@ -121,7 +121,6 @@ Ein Nutzer kann bis zu fünf eigene Kategorien anlegen, umbenennen und löschen;
 ## Update Prompts
 Dabei schauen ob all diese Anforderungen erfüllt sind und auch unnötiges was falsch ist in Vipe-Coding.
 
-
 Anforderungen:
 - Modellierung der Todo-App nach dem MVC-Architekturmuster
     - Für jede der drei MVC-Schichten mindestens die folgenden Elemente definieren:
@@ -149,6 +148,38 @@ Anforderungen:
 Dabei sollen die Buttons in streamlit umgesetzt werden und nicht mit css. Dabei soll nur css genutzt werden, wenn es anders nicht möglich ist mit streamlit. 
 
 Für die Icons soll immer die Icons von Google genutzt werden (https://fonts.google.com/icons?icon.query=task&icon.size=24&icon.color=%236b52a2&icon.platform=web). Dabei sollen ausschließlich diese Icons genutzt werden und keine Emojis
+
+
+Dabei die Qualität auch berücksichtigen:
+- Saubere Dateiorganisation
+- Gute Lesbarkeit und klar verständlicher Code
+- Konsistente Benennungskonventionen
+
+Dabei soll die Trennung zwischen den controller, model und view ganz klar sein
+
+
+
+Dabei soll auch die Test umgesetzt werden:
+Aufgabe: Unit Tests für TODO-App
+Erstellen Sie eine vollständige Suite von Unit Tests für die TODO-App. Verwenden Sie dafür das Framework pytest. Die Tests sollen die Logik der Anwendung vollständig abdecken, ohne externe Systeme einzubeziehen. 
+- Jeder Test soll klar das AAA-Muster verwenden.
+- Jeder Test muss unabhängig voneinander lauffähig sein.
+- Ihre Tests sollen mindestens 80 % des Codes abdecken (Sie können coverage.py nutzen, um das zu messen).
+Erstellen Sie mindestens folgende Unit Tests:
+- Hinzufügen eines neuen TODO-Items
+- Entfernen eines Items
+- Markieren als erledigt / nicht erledigt
+- Bearbeiten eines Items
+- Optional: Fehlerfälle oder Randbedingungen (z. B. leere Titel, doppelte Titel)
+Abgabe: test_unit.py
+
+
+
+
+
+
+
+
 
 
 
@@ -188,7 +219,18 @@ Da ich in einer README begründen muss welche UI-Elemente welche UI-Prinzipien u
 
 
 
-
+todo_mvc/
+├── app.py                          # Einstiegspunkt (minimal)
+├── requirements.txt
+├── model/
+│   ├── constants.py                # NEU: Zentralisierte Konstanten
+│   ├── entities.py                 # Task-Domänenobjekt
+│   ├── repository.py               # Datenzugriff
+│   └── service.py                  # Geschäftslogik
+├── controller/
+│   └── todo_controller.py          # Steuerungslogik + UI-State
+└── view/
+    └── todo_view.py                # Reine UI-Darstellung
 
 
 

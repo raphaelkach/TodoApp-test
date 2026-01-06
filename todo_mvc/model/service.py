@@ -1,97 +1,165 @@
+"""Service-Schicht mit Geschäftslogik und Validierung."""
+
 from __future__ import annotations
 
 from datetime import date
 from typing import List
+
 from model.entities import Task
 from model.repository import SessionStateTaskRepository
-
-PRIORITIES = {"Niedrig", "Mittel", "Hoch"}
+from model.constants import PRIORITIES, DEFAULT_PRIORITY
 
 
 class TodoService:
-    def __init__(self, repo: SessionStateTaskRepository):
-        self.repo = repo
+    """Service für die Geschäftslogik der Todo-App."""
+
+    def __init__(self, repo: SessionStateTaskRepository) -> None:
+        self._repo = repo
 
     def initialize(self) -> None:
-        self.repo.ensure_initialized()
+        """Initialisiert das Repository."""
+        self._repo.ensure_initialized()
+
+    # ---------- Validierung ----------
+
+    def _validate_title(self, title: str | None) -> str | None:
+        """Validiert und normalisiert einen Titel."""
+        title = (title or "").strip()
+        return title if title else None
+
+    def _validate_priority(self, priority: str | None) -> str:
+        """Validiert und normalisiert eine Priorität."""
+        priority = (priority or "").strip().capitalize()
+        return priority if priority in PRIORITIES else DEFAULT_PRIORITY
+
+    def _validate_category(self, category: str | None) -> str | None:
+        """Validiert eine Kategorie gegen existierende Kategorien."""
+        category = (category or "").strip() or None
+        if category is not None and category not in set(self._repo.list_categories()):
+            return None
+        return category
+
+    # ---------- Kategorien ----------
 
     def list_categories(self) -> List[str]:
-        cats = self.repo.list_categories()
+        """Gibt alle Kategorien alphabetisch sortiert zurück."""
+        cats = self._repo.list_categories()
         cats.sort(key=lambda x: x.lower())
         return cats
 
-    def add_category(self, name: str) -> None:
+    def add_category(self, name: str) -> bool:
+        """Fügt eine neue Kategorie hinzu."""
         name = (name or "").strip()
         if not name:
-            return
-        self.repo.add_category(name)
+            return False
+        return self._repo.add_category(name)
 
-    def rename_category(self, old: str, new: str) -> None:
+    def rename_category(self, old: str, new: str) -> bool:
+        """Benennt eine Kategorie um."""
         old = (old or "").strip()
         new = (new or "").strip()
         if not old or not new:
-            return
-        self.repo.rename_category(old, new)
+            return False
+        return self._repo.rename_category(old, new)
 
-    def delete_category(self, name: str) -> None:
-        self.repo.delete_category(name)
+    def delete_category(self, name: str) -> bool:
+        """Löscht eine Kategorie."""
+        return self._repo.delete_category(name)
+
+    # ---------- Tasks ----------
+
+    def list_tasks(self) -> List[Task]:
+        """Gibt alle Tasks zurück."""
+        return self._repo.list_all()
 
     def add_task(
         self,
         title: str,
         due_date: date | None = None,
         category: str | None = None,
-        priority: str = "Mittel",
-    ) -> None:
-        title = (title or "").strip()
-        if not title:
-            return
+        priority: str = DEFAULT_PRIORITY,
+    ) -> bool:
+        """Fügt einen neuen Task hinzu. Gibt True zurück bei Erfolg."""
+        validated_title = self._validate_title(title)
+        if not validated_title:
+            return False
 
-        category = (category or "").strip() or None
-        if category is not None and category not in set(self.repo.list_categories()):
-            category = None
+        validated_category = self._validate_category(category)
+        validated_priority = self._validate_priority(priority)
 
-        priority = (priority or "").strip().capitalize()
-        if priority not in PRIORITIES:
-            priority = "Mittel"
-
-        self.repo.add(
+        self._repo.add(
             Task(
-                id=self.repo.next_id(),
-                title=title,
+                id=self._repo.next_id(),
+                title=validated_title,
                 done=False,
                 due_date=due_date,
-                category=category,
-                priority=priority,
+                category=validated_category,
+                priority=validated_priority,
             )
         )
-
-    def list_tasks(self) -> List[Task]:
-        return self.repo.list_all()
+        return True
 
     def delete_task(self, task_id: int) -> None:
-        self.repo.delete(task_id)
+        """Löscht einen Task."""
+        self._repo.delete(task_id)
 
     def set_done(self, task_id: int, done: bool) -> None:
-        self.repo.set_done(task_id, done)
+        """Setzt den Erledigt-Status eines Tasks."""
+        self._repo.update(task_id, done=done)
 
-    def rename_task(self, task_id: int, new_title: str) -> None:
-        new_title = (new_title or "").strip()
-        if not new_title:
-            return
-        self.repo.rename_task(task_id, new_title)
+    def rename_task(self, task_id: int, new_title: str) -> bool:
+        """Benennt einen Task um. Gibt True zurück bei Erfolg."""
+        validated_title = self._validate_title(new_title)
+        if not validated_title:
+            return False
+        self._repo.update(task_id, title=validated_title)
+        return True
 
     def set_due_date(self, task_id: int, due_date: date | None) -> None:
-        self.repo.set_due_date(task_id, due_date)
+        """Setzt das Fälligkeitsdatum eines Tasks."""
+        self._repo.update(task_id, due_date=due_date)
 
     def set_category(self, task_id: int, category: str | None) -> None:
-        category = (category or "").strip() or None
-        if category is not None and category not in set(self.repo.list_categories()):
-            category = None
-        self.repo.set_category(task_id, category)
+        """Setzt die Kategorie eines Tasks."""
+        validated_category = self._validate_category(category)
+        self._repo.update(task_id, category=validated_category)
 
     def set_priority(self, task_id: int, priority: str) -> None:
-        priority = (priority or "").strip().capitalize()
-        if priority not in PRIORITIES:
-            priority = "Mittel"
-        self.repo.set_priority(task_id, priority)
+        """Setzt die Priorität eines Tasks."""
+        validated_priority = self._validate_priority(priority)
+        self._repo.update(task_id, priority=validated_priority)
+
+    def update_task(
+        self,
+        task_id: int,
+        title: str | None = None,
+        due_date: date | None = None,
+        category: str | None = None,
+        priority: str | None = None,
+        update_due_date: bool = False,
+    ) -> bool:
+        """
+        Aktualisiert einen Task mit mehreren Attributen auf einmal.
+        Gibt True zurück bei Erfolg.
+        """
+        updates = {}
+
+        if title is not None:
+            validated_title = self._validate_title(title)
+            if not validated_title:
+                return False
+            updates["title"] = validated_title
+
+        if update_due_date:
+            updates["due_date"] = due_date
+
+        if category is not None:
+            updates["category"] = self._validate_category(category)
+
+        if priority is not None:
+            updates["priority"] = self._validate_priority(priority)
+
+        if updates:
+            self._repo.update(task_id, **updates)
+
+        return True
