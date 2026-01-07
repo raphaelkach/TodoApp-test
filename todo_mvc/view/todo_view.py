@@ -19,7 +19,6 @@ from model.constants import (
     ICON_DELETE,
     ICON_SAVE,
     ICON_CANCEL,
-    ICON_SETTINGS,
 )
 
 # Layout-Konstanten
@@ -27,10 +26,11 @@ TITLE_META_SPLIT = [0.30, 0.70]
 META_SPLIT = [0.35, 0.27, 0.38]
 ROW_COLS = [0.035, 0.885, 0.08]
 
-# Spacer-Berechnung
-EMPTY_LIST_SPACER_REM = 6.5
-EMPTY_INFO_EST_REM = 4.58
-TASK_CARD_EST_REM = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) / 2
+# UI-Label für "Kategorien verwalten" direkt in der Kategorie-Selectbox
+CAT_MANAGE_LABEL = "➕ Kategorien verwalten…"
+
+# UI-Placeholder für Priorität
+PRIO_PLACEHOLDER = "Priorität auswählen…"
 
 
 def render_app(controller: TodoController) -> None:
@@ -54,7 +54,7 @@ def _render_kpi_panel(controller: TodoController) -> None:
     percent_done = int(round((done_count / all_count) * 100)) if all_count else 0
 
     with st.container(border=True):
-        st.write("**KPI & Fortschritt**")
+        st.write("**Fortschritt**")
 
         c1, c2, c3 = st.columns(3, gap="small")
         with c1:
@@ -73,21 +73,15 @@ def _render_add_form(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Neue Aufgabe**")
 
-        # Kategorie-Dialog anzeigen falls offen
-        if controller.is_category_dialog_open():
-            _render_category_dialog(controller)
-            controller.close_category_dialog()
-
-        # Titel-Eingabe
-        st.text_input(
-            "Aufgabe",
-            placeholder="z.B. Folien wiederholen …",
-            label_visibility="collapsed",
-            key="new_title",
-        )
-
-        # Deadline und Priorität
-        col_dead, col_prio = st.columns([0.51, 0.49], vertical_alignment="bottom")
+        # Zeile 1: Titel + Deadline
+        col_title, col_dead = st.columns([0.72, 0.28], vertical_alignment="bottom")
+        with col_title:
+            st.text_input(
+                "Aufgabe",
+                placeholder="z.B. Folien wiederholen …",
+                label_visibility="collapsed",
+                key="new_title",
+            )
         with col_dead:
             st.date_input(
                 "Deadline",
@@ -96,41 +90,90 @@ def _render_add_form(controller: TodoController) -> None:
                 label_visibility="collapsed",
                 format="DD.MM.YYYY",
             )
+
+        # Zeile 2: Priorität + Kategorie (inkl. "Kategorien verwalten…")
+        col_prio, col_cat = st.columns([0.5, 0.5], vertical_alignment="bottom")
+
         with col_prio:
+            # UI-Key getrennt vom echten Key, damit wir "Priorität auswählen…" anzeigen können
+            prio_real_key = "new_priority"
+            prio_ui_key = "new_priority_ui"
+
+            # echtes Feld hat weiterhin einen sinnvollen Default (für Add-Logik)
+            st.session_state.setdefault(prio_real_key, DEFAULT_PRIORITY)
+
+            prio_options = [PRIO_PLACEHOLDER] + list(PRIORITY_OPTIONS)
+
+            # UI initial: Placeholder (oder bereits gewählte Priorität)
+            st.session_state.setdefault(prio_ui_key, PRIO_PLACEHOLDER)
+            if st.session_state.get(prio_real_key) in PRIORITY_OPTIONS and st.session_state[prio_ui_key] == PRIO_PLACEHOLDER:
+                # falls schon mal gesetzt, UI synchronisieren
+                st.session_state[prio_ui_key] = st.session_state[prio_real_key]
+
+            def _on_new_priority_change() -> None:
+                sel = st.session_state.get(prio_ui_key, PRIO_PLACEHOLDER)
+                if sel in PRIORITY_OPTIONS:
+                    st.session_state[prio_real_key] = sel
+                else:
+                    # Placeholder ausgewählt -> echtes Feld bleibt Default
+                    st.session_state[prio_real_key] = DEFAULT_PRIORITY
+
             st.selectbox(
                 "Priorität",
-                options=PRIORITY_OPTIONS,
-                key="new_priority",
+                options=prio_options,
+                key=prio_ui_key,
                 label_visibility="collapsed",
+                on_change=_on_new_priority_change,
             )
 
-        # Kategorie-Auswahl
-        controller.validate_category_value("new_category")
-        available = controller.list_categories()
-        disabled = len(available) == 0
-
-        col_cat, col_set = st.columns([0.88, 0.12], vertical_alignment="bottom")
         with col_cat:
-            options = [CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL]
+            # Realer Wert (den Controller später nutzt) und UI-Key (Selectbox)
+            real_key = "new_category"
+            ui_key = "new_category_ui"
+
+            # Defaults setzen + validieren
+            st.session_state.setdefault(real_key, CATEGORY_NONE_LABEL)
+            controller.validate_category_value(real_key)
+
+            available = controller.list_categories()
+            cat_options = [CATEGORY_NONE_LABEL] + available + [CAT_MANAGE_LABEL]
+
+            # UI-Auswahl initial mit realem Wert synchronisieren
+            st.session_state.setdefault(ui_key, st.session_state[real_key])
+            if st.session_state[ui_key] not in cat_options:
+                st.session_state[ui_key] = CATEGORY_NONE_LABEL
+
+            def _on_new_category_change() -> None:
+                sel = st.session_state.get(ui_key, CATEGORY_NONE_LABEL)
+
+                # "Kategorien verwalten…" => Panel öffnen und Auswahl zurücksetzen
+                if sel == CAT_MANAGE_LABEL:
+                    controller.set_ui_value("show_categories", True)
+                    st.session_state[ui_key] = st.session_state.get(real_key, CATEGORY_NONE_LABEL)
+                    st.session_state["__request_rerun__"] = True
+                    return
+
+                # Normaler Wert => in echten Wert übernehmen
+                st.session_state[real_key] = sel
+
             st.selectbox(
                 "Kategorie",
-                options=options,
-                key="new_category",
+                options=cat_options,
+                key=ui_key,  # UI-Key
                 label_visibility="collapsed",
-                disabled=disabled,
+                on_change=_on_new_category_change,
             )
-        with col_set:
-            if st.button(
-                "\u200b",
-                icon=ICON_SETTINGS,
-                type="tertiary",
-                key="open_settings_btn",
-                help="Kategorien verwalten",
-                use_container_width=True,
-            ):
-                controller.open_category_dialog()
 
-        # Hinzufügen-Button
+            # Rerun außerhalb des Callbacks (Streamlit-konform)
+            if st.session_state.pop("__request_rerun__", False):
+                st.rerun()
+
+        # ✅ Kategorieverwaltung ÜBER dem "Hinzufügen"-Button
+        is_open = controller.get_ui_value("show_categories", False)
+        if is_open:
+            _render_category_management(controller)
+
+        # Hinzufügen-Button (unterhalb)
         st.button(
             "Hinzufügen",
             icon=ICON_ADD_BOX,
@@ -141,37 +184,55 @@ def _render_add_form(controller: TodoController) -> None:
         )
 
 
-@st.dialog("Kategorien verwalten")
-def _render_category_dialog(controller: TodoController) -> None:
-    """Rendert den Dialog zur Kategorieverwaltung."""
-    current = controller.list_categories()
+def _render_category_management(controller: TodoController) -> None:
+    """Rendert die Kategorieverwaltung."""
     can_add = controller.can_add_category()
 
-    # Neue Kategorie hinzufügen
-    st.text_input(
-        "Neue Kategorie",
-        key="cat_new_name",
-        placeholder="z.B. Uni, Haushalt …",
-        disabled=not can_add,
+    # Neue Kategorie hinzufügen + Close-Icon in derselben Zeile (auf gleicher Höhe)
+    col_input, col_btn, col_close = st.columns(
+        [0.70, 0.22, 0.08],
+        vertical_alignment="bottom",
     )
-    st.button(
-        "Anlegen",
-        icon=ICON_ADD,
-        type="primary",
-        on_click=controller.add_category,
-        key="cat_add_btn",
-        use_container_width=True,
-        disabled=not can_add,
-    )
+
+    with col_input:
+        st.text_input(
+            "Neue Kategorie",
+            key="cat_new_name",
+            placeholder="z.B. Uni, Haushalt …",
+            disabled=not can_add,
+            label_visibility="collapsed",
+        )
+
+    with col_btn:
+        st.button(
+            "Anlegen",
+            icon=ICON_ADD,
+            type="primary",
+            on_click=controller.add_category,
+            key="cat_add_btn",
+            use_container_width=True,
+            disabled=not can_add,
+        )
+
+    with col_close:
+        if st.button(
+            "\u200b",  # nur Icon
+            icon=ICON_CANCEL,
+            type="tertiary",
+            key="cat_close_btn",
+            help="Kategorieverwaltung schließen",
+            use_container_width=True,
+        ):
+            controller.set_ui_value("show_categories", False)
+            st.rerun()
+
     if not can_add:
         st.caption("Maximal 5 Kategorien möglich.")
-
-    st.divider()
 
     # Bestehende Kategorien anzeigen
     current = controller.list_categories()
     if not current:
-        st.info("Noch keine Kategorien vorhanden.")
+        st.caption("Noch keine Kategorien vorhanden.")
         return
 
     rename_target = controller.get_rename_target()
@@ -255,20 +316,16 @@ def _render_task_list(controller: TodoController) -> None:
 
         if not tasks:
             st.info("Noch keine Aufgaben.")
-            _render_list_spacer(0)
         else:
             for task in tasks:
                 _render_task_row(controller, task)
-            _render_list_spacer(len(tasks))
 
 
 def _render_filter(controller: TodoController) -> None:
     """Rendert die Filter-Segmente."""
-    all_count, open_count, done_count = controller.get_task_counts()
-
-    opt_all = f"Alle ({all_count})"
-    opt_open = f"Offen ({open_count})"
-    opt_done = f"Erledigt ({done_count})"
+    opt_all = "Alle"
+    opt_open = "Offen"
+    opt_done = "Erledigt"
     options = [opt_all, opt_open, opt_done]
 
     filter_raw = controller.get_filter()
@@ -508,17 +565,3 @@ def _render_task_edit_buttons(controller: TodoController, task) -> None:
             on_click=controller.cancel_edit,
             args=(task.id, task.title, task.due_date, task.category, priority),
         )
-
-
-def _render_list_spacer(displayed_count: int) -> None:
-    """Rendert einen Spacer für konsistente Listenhöhe."""
-    if displayed_count > 2:
-        return
-
-    if displayed_count == 0:
-        rem = EMPTY_LIST_SPACER_REM
-    else:
-        rem = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) - (displayed_count * TASK_CARD_EST_REM)
-
-    if rem > 0:
-        st.markdown(f"<div style='height:{rem}rem;'></div>", unsafe_allow_html=True)
