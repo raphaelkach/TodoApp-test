@@ -228,13 +228,15 @@ def _render_category_management(controller: TodoController) -> None:
 
 def _render_category_edit_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Bearbeitungsmodus."""
-    col_name, col_buttons = st.columns([0.92, 0.08], vertical_alignment="center")
+    # Layout wie Erstellen-Zeile: [0.70, 0.22, 0.08]
+    col_name, col_buttons, _col_spacer = st.columns([0.70, 0.22, 0.08], vertical_alignment="center")
 
     with col_name:
         st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
 
     with col_buttons:
-        btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+        # Buttons mittig im Bereich unter "Erstellen"
+        _left, btn1, btn2, _right = st.columns([0.15, 0.35, 0.35, 0.15], gap="small")
 
         with btn1:
             st.button(
@@ -261,13 +263,15 @@ def _render_category_edit_row(controller: TodoController, cat: str, index: int) 
 
 def _render_category_view_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Ansichtsmodus."""
-    col_name, col_buttons = st.columns([0.92, 0.08], vertical_alignment="center")
+    # Layout wie Erstellen-Zeile: [0.70, 0.22, 0.08]
+    col_name, col_buttons, _col_spacer = st.columns([0.70, 0.22, 0.08], vertical_alignment="center")
 
     with col_name:
         st.write(cat)
 
     with col_buttons:
-        btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+        # Buttons mittig im Bereich unter "Erstellen"
+        _left, btn1, btn2, _right = st.columns([0.15, 0.35, 0.35, 0.15], gap="small")
 
         with btn1:
             st.button(
