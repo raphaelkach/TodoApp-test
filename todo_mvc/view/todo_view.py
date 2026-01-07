@@ -36,7 +36,7 @@ CAT_MANAGE_LABEL = "➕ Kategorien verwalten…"
 def get_responsive_css() -> str:
     """
     Gibt das responsive CSS für die App zurück.
-    
+
     Minimales CSS nur für:
     - Container-Breite und Padding (Desktop vs Mobile)
     - Titel-Größe
@@ -52,13 +52,17 @@ def get_responsive_css() -> str:
         padding-top: 2rem;
         padding-left: 3%;
         padding-right: 3%;
-        max-width: 75rem;
+        max-width: 58rem;
         margin: 0 auto;
     }
     
     /* Metriken-Größe für gleiche Höhe mit "Neue Aufgabe" */
     [data-testid="stMetricValue"] {
         font-size: 2.5rem !important;
+    }
+    
+    h1 {
+    text-align: center;
     }
     
     /* ============================================
@@ -97,13 +101,14 @@ def render_app(controller: TodoController) -> None:
     """Hauptfunktion zum Rendern der gesamten App."""
     # Responsive CSS einbinden
     st.markdown(get_responsive_css(), unsafe_allow_html=True)
-    
+
     st.title("Todo-App")
 
     # Responsive Layout: Desktop = 2 Spalten, Mobile = 1 Spalte (automatisch durch Streamlit)
     # Auf kleinen Screens stacken die Spalten automatisch
-    col_add, col_kpi = st.columns([0.65, 0.35], gap="small", vertical_alignment="top")
-    
+    col_add, col_kpi = st.columns(
+        [0.65, 0.35], gap="small", vertical_alignment="top")
+
     with col_add:
         _render_add_form(controller)
     with col_kpi:
@@ -116,7 +121,8 @@ def render_app(controller: TodoController) -> None:
 def _render_kpi_panel(controller: TodoController) -> None:
     """Rendert KPI und Fortschritt (Erledigt-Progress) für Aufgaben."""
     all_count, open_count, done_count = controller.get_task_counts()
-    percent_done = int(round((done_count / all_count) * 100)) if all_count else 0
+    percent_done = int(round((done_count / all_count) * 100)
+                       ) if all_count else 0
 
     with st.container(border=True):
         st.write("**Fortschritt**")
@@ -142,7 +148,7 @@ def _render_add_form(controller: TodoController) -> None:
         # Responsive Zeile 1: Titel (größer) + Deadline (kleiner)
         # Auf Mobile stacken diese automatisch
         col_title, col_dead = st.columns([0.72, 0.28], gap="small")
-        
+
         with col_title:
             st.text_input(
                 "Aufgabe",
@@ -185,7 +191,8 @@ def _render_add_form(controller: TodoController) -> None:
             controller.validate_category_value(real_key)
 
             available = controller.list_categories()
-            cat_options = [CATEGORY_NONE_LABEL] + available + [CAT_MANAGE_LABEL]
+            cat_options = [CATEGORY_NONE_LABEL] + \
+                available + [CAT_MANAGE_LABEL]
 
             st.session_state.setdefault(ui_key, st.session_state[real_key])
             if st.session_state[ui_key] not in cat_options:
@@ -196,7 +203,8 @@ def _render_add_form(controller: TodoController) -> None:
 
                 if sel == CAT_MANAGE_LABEL:
                     controller.set_ui_value("show_categories", True)
-                    st.session_state[ui_key] = st.session_state.get(real_key, CATEGORY_NONE_LABEL)
+                    st.session_state[ui_key] = st.session_state.get(
+                        real_key, CATEGORY_NONE_LABEL)
                     st.session_state["__request_rerun__"] = True
                     return
 
@@ -296,11 +304,12 @@ def _render_category_edit_row(controller: TodoController, cat: str, index: int) 
     )
 
     with col_name:
-        st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
+        st.text_input("Umbenennen", key="cat_rename_value",
+                      label_visibility="collapsed")
 
     with col_buttons:
         btn1, btn2 = st.columns(2, gap="small")
-        
+
         with btn1:
             st.button(
                 "\u200b",
@@ -336,7 +345,7 @@ def _render_category_view_row(controller: TodoController, cat: str, index: int) 
 
     with col_buttons:
         btn1, btn2 = st.columns(2, gap="small")
-        
+
         with btn1:
             st.button(
                 "\u200b",
@@ -419,7 +428,7 @@ def _render_filter(controller: TodoController) -> None:
 def _render_task_row(controller: TodoController, task) -> None:
     """
     Rendert eine einzelne Task-Zeile.
-    
+
     Responsive Layout:
     - Desktop: Checkbox | Titel + Meta | Buttons in einer Zeile
     - Mobile: Elemente stacken vertikal für bessere Touch-Bedienung
@@ -476,7 +485,8 @@ def _render_task_view_content(task) -> None:
         priority = getattr(task, "priority", None)
 
         with col_dead:
-            st.caption(task.due_date.strftime("%d.%m.%Y") if task.due_date else "")
+            st.caption(task.due_date.strftime(
+                "%d.%m.%Y") if task.due_date else "")
         with col_prio:
             if priority and priority in PRIO_ICONS:
                 icon = PRIO_ICONS[priority]
@@ -529,7 +539,8 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             controller.validate_category_value(f"cat_sel_{task.id}")
             available = controller.list_categories()
             disabled = len(available) == 0
-            options = [CATEGORY_NONE_LABEL] + available if not disabled else [CATEGORY_NONE_LABEL]
+            options = [CATEGORY_NONE_LABEL] + \
+                available if not disabled else [CATEGORY_NONE_LABEL]
 
             st.selectbox(
                 "Kategorie",
