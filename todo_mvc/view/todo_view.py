@@ -1,4 +1,12 @@
-"""View-Schicht für die Todo-App UI-Darstellung."""
+"""
+View-Schicht für die Todo-App UI-Darstellung.
+
+Responsive Design Implementation:
+- Relative Maße (em, %) statt Pixel
+- Media Queries für Breakpoints (Mobile ≤768px, Desktop >768px)
+- Flexbox für anpassungsfähige Anordnung
+- Streamlit columns für Layout-Anpassungen
+"""
 
 from __future__ import annotations
 
@@ -20,27 +28,83 @@ from model.constants import (
     ICON_CANCEL,
 )
 
-# Layout-Konstanten
-TITLE_META_SPLIT = [0.30, 0.70]
-META_SPLIT = [0.35, 0.27, 0.38]
-ROW_COLS = [0.035, 0.885, 0.08]
 
 # UI-Label für "Kategorien verwalten" direkt in der Kategorie-Selectbox
 CAT_MANAGE_LABEL = "➕ Kategorien verwalten…"
 
 
+def get_responsive_css() -> str:
+    """
+    Gibt das responsive CSS für die App zurück.
+    
+    Minimales CSS nur für:
+    - Container-Breite und Padding (Desktop vs Mobile)
+    - Titel-Größe
+    - Touch-Targets auf Mobile
+    """
+    return """
+    <style>
+    /* ============================================
+       DESKTOP STYLES (>768px)
+       ============================================ */
+    
+    .block-container {
+        padding-top: 2rem;
+        padding-left: 3%;
+        padding-right: 3%;
+        max-width: 75rem;
+        margin: 0 auto;
+    }
+    
+    /* ============================================
+       MOBILE STYLES (≤768px)
+       ============================================ */
+    
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 1rem;
+            max-width: 100%;
+        }
+        
+        h1 {
+            font-size: 1.75rem !important;
+            text-align: center;
+        }
+        
+        /* Größere Touch-Targets */
+        .stButton > button {
+            min-height: 2.75em;
+        }
+        
+        .stTextInput > div > div > input,
+        .stSelectbox > div > div > div,
+        .stDateInput > div > div > input {
+            min-height: 2.75em;
+        }
+    }
+    </style>
+    """
+
+
 def render_app(controller: TodoController) -> None:
     """Hauptfunktion zum Rendern der gesamten App."""
+    # Responsive CSS einbinden
+    st.markdown(get_responsive_css(), unsafe_allow_html=True)
+    
     st.title("Todo-App")
 
-    # Oben: Neue Aufgabe (links) + KPI/Progress (rechts)
-    col_add, col_kpi = st.columns([0.65, 0.35], gap="small")
+    # Responsive Layout: Desktop = 2 Spalten, Mobile = 1 Spalte (automatisch durch Streamlit)
+    # Auf kleinen Screens stacken die Spalten automatisch
+    col_add, col_kpi = st.columns([0.65, 0.35], gap="medium")
+    
     with col_add:
         _render_add_form(controller)
     with col_kpi:
         _render_kpi_panel(controller)
 
-    # Unten: Aufgabenliste über volle Breite
+    # Aufgabenliste über volle Breite
     _render_task_list(controller)
 
 
@@ -52,6 +116,7 @@ def _render_kpi_panel(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Fortschritt**")
 
+        # 3 Metriken nebeneinander - stacken auf Mobile automatisch
         c1, c2, c3 = st.columns(3, gap="small")
         with c1:
             st.metric("Gesamt", all_count)
@@ -69,8 +134,10 @@ def _render_add_form(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Neue Aufgabe**")
 
-        # Zeile 1: Titel + Deadline
-        col_title, col_dead = st.columns([0.72, 0.28], vertical_alignment="bottom")
+        # Responsive Zeile 1: Titel (größer) + Deadline (kleiner)
+        # Auf Mobile stacken diese automatisch
+        col_title, col_dead = st.columns([0.72, 0.28], gap="small")
+        
         with col_title:
             st.text_input(
                 "Aufgabe",
@@ -87,18 +154,15 @@ def _render_add_form(controller: TodoController) -> None:
                 format="DD.MM.YYYY",
             )
 
-        # Zeile 2: Priorität + Kategorie (inkl. "Kategorien verwalten…")
-        col_prio, col_cat = st.columns([0.5, 0.5], vertical_alignment="bottom")
+        # Responsive Zeile 2: Priorität + Kategorie (50/50)
+        col_prio, col_cat = st.columns([0.5, 0.5], gap="small")
 
         with col_prio:
             prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
-
-            # Default ist "Priorität auswählen" (= keine Priorität)
             st.session_state.setdefault("new_priority", PRIORITY_NONE_LABEL)
 
             def _on_new_priority_change() -> None:
-                sel = st.session_state.get("new_priority", PRIORITY_NONE_LABEL)
-                # Wert bleibt wie ausgewählt - wird im Controller normalisiert
+                pass  # Wert wird im Controller normalisiert
 
             st.selectbox(
                 "Priorität",
@@ -109,18 +173,15 @@ def _render_add_form(controller: TodoController) -> None:
             )
 
         with col_cat:
-            # Realer Wert (den Controller später nutzt) und UI-Key (Selectbox)
             real_key = "new_category"
             ui_key = "new_category_ui"
 
-            # Defaults setzen + validieren
             st.session_state.setdefault(real_key, CATEGORY_NONE_LABEL)
             controller.validate_category_value(real_key)
 
             available = controller.list_categories()
             cat_options = [CATEGORY_NONE_LABEL] + available + [CAT_MANAGE_LABEL]
 
-            # UI-Auswahl initial mit realem Wert synchronisieren
             st.session_state.setdefault(ui_key, st.session_state[real_key])
             if st.session_state[ui_key] not in cat_options:
                 st.session_state[ui_key] = CATEGORY_NONE_LABEL
@@ -128,34 +189,31 @@ def _render_add_form(controller: TodoController) -> None:
             def _on_new_category_change() -> None:
                 sel = st.session_state.get(ui_key, CATEGORY_NONE_LABEL)
 
-                # "Kategorien verwalten…" => Panel öffnen und Auswahl zurücksetzen
                 if sel == CAT_MANAGE_LABEL:
                     controller.set_ui_value("show_categories", True)
                     st.session_state[ui_key] = st.session_state.get(real_key, CATEGORY_NONE_LABEL)
                     st.session_state["__request_rerun__"] = True
                     return
 
-                # Normaler Wert => in echten Wert übernehmen
                 st.session_state[real_key] = sel
 
             st.selectbox(
                 "Kategorie",
                 options=cat_options,
-                key=ui_key,  # UI-Key
+                key=ui_key,
                 label_visibility="collapsed",
                 on_change=_on_new_category_change,
             )
 
-            # Rerun außerhalb des Callbacks (Streamlit-konform)
             if st.session_state.pop("__request_rerun__", False):
                 st.rerun()
 
-        # ✅ Kategorieverwaltung ÜBER dem "Hinzufügen"-Button
+        # Kategorieverwaltung (wenn offen)
         is_open = controller.get_ui_value("show_categories", False)
         if is_open:
             _render_category_management(controller)
 
-        # Hinzufügen-Button (unterhalb)
+        # Hinzufügen-Button (volle Breite für bessere Touch-Bedienung)
         st.button(
             "Hinzufügen",
             icon=ICON_ADD_CIRCLE,
@@ -170,10 +228,10 @@ def _render_category_management(controller: TodoController) -> None:
     """Rendert die Kategorieverwaltung."""
     can_add = controller.can_add_category()
 
-    # Neue Kategorie hinzufügen + Close-Icon in derselben Zeile (auf gleicher Höhe)
+    # Responsive Layout: Input + Button + Close
     col_input, col_btn, col_close = st.columns(
-        [0.70, 0.22, 0.08],
-        vertical_alignment="bottom",
+        [0.65, 0.25, 0.10],
+        gap="small",
     )
 
     with col_input:
@@ -198,7 +256,7 @@ def _render_category_management(controller: TodoController) -> None:
 
     with col_close:
         if st.button(
-            "\u200b",  # nur Icon
+            "\u200b",
             icon=ICON_CANCEL,
             type="tertiary",
             key="cat_close_btn",
@@ -211,7 +269,6 @@ def _render_category_management(controller: TodoController) -> None:
     if not can_add:
         st.caption("Maximal 5 Kategorien möglich.")
 
-    # Bestehende Kategorien anzeigen
     current = controller.list_categories()
     if not current:
         st.caption("Noch keine Kategorien vorhanden.")
@@ -228,16 +285,17 @@ def _render_category_management(controller: TodoController) -> None:
 
 def _render_category_edit_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Bearbeitungsmodus."""
-    # Layout wie Erstellen-Zeile: [0.70, 0.22, 0.08]
-    col_name, col_buttons, _col_spacer = st.columns([0.70, 0.22, 0.08], vertical_alignment="center")
+    col_name, col_buttons, _col_spacer = st.columns(
+        [0.65, 0.25, 0.10],
+        gap="small",
+    )
 
     with col_name:
         st.text_input("Umbenennen", key="cat_rename_value", label_visibility="collapsed")
 
     with col_buttons:
-        # Buttons mittig im Bereich unter "Erstellen"
-        _left, btn1, btn2, _right = st.columns([0.15, 0.35, 0.35, 0.15], gap="small")
-
+        btn1, btn2 = st.columns(2, gap="small")
+        
         with btn1:
             st.button(
                 "\u200b",
@@ -263,16 +321,17 @@ def _render_category_edit_row(controller: TodoController, cat: str, index: int) 
 
 def _render_category_view_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Ansichtsmodus."""
-    # Layout wie Erstellen-Zeile: [0.70, 0.22, 0.08]
-    col_name, col_buttons, _col_spacer = st.columns([0.70, 0.22, 0.08], vertical_alignment="center")
+    col_name, col_buttons, _col_spacer = st.columns(
+        [0.65, 0.25, 0.10],
+        gap="small",
+    )
 
     with col_name:
         st.write(cat)
 
     with col_buttons:
-        # Buttons mittig im Bereich unter "Erstellen"
-        _left, btn1, btn2, _right = st.columns([0.15, 0.35, 0.35, 0.15], gap="small")
-
+        btn1, btn2 = st.columns(2, gap="small")
+        
         with btn1:
             st.button(
                 "\u200b",
@@ -302,10 +361,8 @@ def _render_task_list(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Aufgabenliste**")
 
-        # Filter rendern
         _render_filter(controller)
 
-        # Tasks anzeigen
         tasks = controller.get_filtered_tasks()
 
         if not tasks:
@@ -331,7 +388,7 @@ def _render_filter(controller: TodoController) -> None:
     else:
         default_opt = opt_all
 
-    # Segmented Control wenn verfügbar, sonst Radio
+    # Segmented Control oder Radio (fallback)
     if hasattr(st, "segmented_control"):
         selected = st.segmented_control(
             "Filter",
@@ -355,17 +412,23 @@ def _render_filter(controller: TodoController) -> None:
 
 
 def _render_task_row(controller: TodoController, task) -> None:
-    """Rendert eine einzelne Task-Zeile."""
+    """
+    Rendert eine einzelne Task-Zeile.
+    
+    Responsive Layout:
+    - Desktop: Checkbox | Titel + Meta | Buttons in einer Zeile
+    - Mobile: Elemente stacken vertikal für bessere Touch-Bedienung
+    """
     with st.container(border=True):
         editing = controller.is_editing(task.id)
 
+        # Responsive Spalten-Aufteilung
+        # Kleine Checkbox | Großer Inhaltsbereich | Buttons nebeneinander
         col_chk, col_main, col_buttons = st.columns(
-            ROW_COLS,
+            [0.04, 0.84, 0.12],
             gap="small",
-            vertical_alignment="center",
         )
 
-        # Checkbox
         with col_chk:
             st.checkbox(
                 "\u200b",
@@ -377,14 +440,12 @@ def _render_task_row(controller: TodoController, task) -> None:
                 help="Als erledigt markieren",
             )
 
-        # Hauptbereich (Titel + Meta)
         with col_main:
             if editing:
                 _render_task_edit_content(controller, task)
             else:
                 _render_task_view_content(task)
 
-        # Buttons
         with col_buttons:
             if editing:
                 _render_task_edit_buttons(controller, task)
@@ -394,11 +455,8 @@ def _render_task_row(controller: TodoController, task) -> None:
 
 def _render_task_view_content(task) -> None:
     """Rendert den Inhalt einer Task-Zeile im Ansichtsmodus."""
-    title_area, meta_area = st.columns(
-        TITLE_META_SPLIT,
-        vertical_alignment="center",
-        gap="small",
-    )
+    # Responsive: Titel links, Meta rechts (stackt auf Mobile)
+    title_area, meta_area = st.columns([0.35, 0.65], gap="small")
 
     with title_area:
         if task.done:
@@ -407,11 +465,8 @@ def _render_task_view_content(task) -> None:
             st.write(task.title)
 
     with meta_area:
-        col_dead, col_prio, col_cat = st.columns(
-            META_SPLIT,
-            vertical_alignment="center",
-            gap="small",
-        )
+        # Meta-Informationen: Deadline | Priorität | Kategorie
+        col_dead, col_prio, col_cat = st.columns(3, gap="small")
 
         priority = getattr(task, "priority", None)
 
@@ -429,13 +484,9 @@ def _render_task_view_content(task) -> None:
 
 def _render_task_edit_content(controller: TodoController, task) -> None:
     """Rendert den Inhalt einer Task-Zeile im Bearbeitungsmodus."""
-    title_area, meta_area = st.columns(
-        TITLE_META_SPLIT,
-        vertical_alignment="bottom",
-        gap="small",
-    )
+    # Responsive: Titel und Meta-Eingabefelder
+    title_area, meta_area = st.columns([0.35, 0.65], gap="small")
 
-    # Initialwerte setzen
     current_priority = getattr(task, "priority", None)
     st.session_state.setdefault(f"title_{task.id}", task.title)
     st.session_state.setdefault(
@@ -455,11 +506,7 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         )
 
     with meta_area:
-        col_dead, col_prio, col_cat = st.columns(
-            META_SPLIT,
-            vertical_alignment="bottom",
-            gap="small",
-        )
+        col_dead, col_prio, col_cat = st.columns(3, gap="small")
 
         with col_dead:
             _render_due_date_input(controller, task)
@@ -515,7 +562,7 @@ def _render_due_date_input(controller: TodoController, task) -> None:
 
 def _render_task_view_buttons(controller: TodoController, task) -> None:
     """Rendert die Buttons im Ansichtsmodus."""
-    btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+    btn1, btn2 = st.columns(2, gap="small")
 
     priority = getattr(task, "priority", None)
 
@@ -528,6 +575,7 @@ def _render_task_view_buttons(controller: TodoController, task) -> None:
             key=f"edit_{task.id}",
             on_click=controller.start_edit,
             args=(task.id, task.title, task.due_date, task.category, priority),
+            use_container_width=True,
         )
     with btn2:
         st.button(
@@ -538,12 +586,13 @@ def _render_task_view_buttons(controller: TodoController, task) -> None:
             key=f"del_{task.id}",
             on_click=controller.delete_task,
             args=(task.id,),
+            use_container_width=True,
         )
 
 
 def _render_task_edit_buttons(controller: TodoController, task) -> None:
     """Rendert die Buttons im Bearbeitungsmodus."""
-    btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
+    btn1, btn2 = st.columns(2, gap="small")
 
     priority = getattr(task, "priority", None)
 
@@ -556,6 +605,7 @@ def _render_task_edit_buttons(controller: TodoController, task) -> None:
             key=f"save_{task.id}",
             on_click=controller.save_edit,
             args=(task.id,),
+            use_container_width=True,
         )
     with btn2:
         st.button(
@@ -566,4 +616,5 @@ def _render_task_edit_buttons(controller: TodoController, task) -> None:
             key=f"cancel_{task.id}",
             on_click=controller.cancel_edit,
             args=(task.id, task.title, task.due_date, task.category, priority),
+            use_container_width=True,
         )

@@ -1,4 +1,11 @@
-"""Haupteinstiegspunkt der Todo-App."""
+"""
+Haupteinstiegspunkt der Todo-App.
+
+Responsive Design Features:
+- Wide Layout für Desktop-Optimierung
+- Automatisches Stacken von Spalten auf Mobile durch Streamlit
+- CSS Media Queries für feinere Anpassungen
+"""
 
 from __future__ import annotations
 
@@ -9,38 +16,19 @@ from model.repository import SessionStateTaskRepository
 from model.service import TodoService
 from view.todo_view import render_app
 
-# Page-Konfiguration
-st.set_page_config(page_title="Todo-App", layout="wide")
-
-# CSS nur wo unbedingt nötig (Responsive Design)
-st.markdown(
-    """
-    <style>
-      /* Responsive Padding - nicht mit Streamlit lösbar */
-      .block-container { padding-top: 2rem; }
-
-      @media (max-width: 768px) {
-        .block-container {
-          padding-left: 1rem;
-          padding-right: 1rem;
-          padding-top: 1.25rem;
-        }
-        h1 { font-size: 2.2rem !important; }
-      }
-
-      @media (min-width: 1100px) {
-        .block-container { max-width: 1200px; }
-      }
-    </style>
-    """,
-    unsafe_allow_html=True,
+# Page-Konfiguration für responsive Darstellung
+st.set_page_config(
+    page_title="Todo-App",
+    page_icon=":material/task_alt:",
+    layout="wide",  # Nutzt verfügbare Bildschirmbreite
+    initial_sidebar_state="collapsed",  # Sidebar standardmäßig eingeklappt
 )
 
-# MVC Wiring
+# MVC Wiring - Dependency Injection
 repo = SessionStateTaskRepository(st.session_state)
 service = TodoService(repo)
 controller = TodoController(service, st.session_state)
 controller.initialize()
 
-# View rendern
+# View rendern (enthält responsive CSS)
 render_app(controller)
