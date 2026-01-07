@@ -56,6 +56,11 @@ def get_responsive_css() -> str:
         margin: 0 auto;
     }
     
+    /* Metriken-Größe für gleiche Höhe mit "Neue Aufgabe" */
+    [data-testid="stMetricValue"] {
+        font-size: 2.5rem !important;
+    }
+    
     /* ============================================
        MOBILE STYLES (≤768px)
        ============================================ */
