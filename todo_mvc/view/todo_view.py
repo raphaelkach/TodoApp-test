@@ -13,7 +13,6 @@ from model.constants import (
     FILTER_DONE,
     PRIORITY_OPTIONS,
     PRIO_ICONS,
-    ICON_ADD,
     ICON_ADD_CIRCLE,
     ICON_EDIT,
     ICON_DELETE,
@@ -205,8 +204,8 @@ def _render_category_management(controller: TodoController) -> None:
 
     with col_btn:
         st.button(
-            "Anlegen",
-            icon=ICON_ADD,
+            "Erstellen",
+            icon=ICON_ADD_CIRCLE,
             type="primary",
             on_click=controller.add_category,
             key="cat_add_btn",
