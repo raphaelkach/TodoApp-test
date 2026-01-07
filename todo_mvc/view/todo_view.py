@@ -14,7 +14,7 @@ from model.constants import (
     PRIORITY_OPTIONS,
     PRIO_ICONS,
     ICON_ADD,
-    ICON_ADD_BOX,
+    ICON_ADD_CIRCLE,
     ICON_EDIT,
     ICON_DELETE,
     ICON_SAVE,
@@ -176,7 +176,7 @@ def _render_add_form(controller: TodoController) -> None:
         # Hinzufügen-Button (unterhalb)
         st.button(
             "Hinzufügen",
-            icon=ICON_ADD_BOX,
+            icon=ICON_ADD_CIRCLE,
             type="primary",
             on_click=controller.add_task,
             key="add_btn",

@@ -37,7 +37,7 @@ UI_EDIT_SESSION: str = "_edit_session"
 
 # Icons (Google Material Icons)
 ICON_ADD: str = ":material/add:"
-ICON_ADD_BOX: str = ":material/add_box:"
+ICON_ADD_CIRCLE: str = ":material/add_circle:"
 ICON_EDIT: str = ":material/edit:"
 ICON_DELETE: str = ":material/delete_forever:"
 ICON_SAVE: str = ":material/save:"
