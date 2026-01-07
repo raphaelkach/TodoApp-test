@@ -37,13 +37,35 @@ def render_app(controller: TodoController) -> None:
     """Hauptfunktion zum Rendern der gesamten App."""
     st.title("Todo-App")
 
-    col_add, col_list = st.columns([0.30, 0.70], gap="small")
-
+    # Oben: Neue Aufgabe (links) + KPI/Progress (rechts)
+    col_add, col_kpi = st.columns([0.65, 0.35], gap="small")
     with col_add:
         _render_add_form(controller)
+    with col_kpi:
+        _render_kpi_panel(controller)
 
-    with col_list:
-        _render_task_list(controller)
+    # Unten: Aufgabenliste über volle Breite
+    _render_task_list(controller)
+
+
+def _render_kpi_panel(controller: TodoController) -> None:
+    """Rendert KPI und Fortschritt (Erledigt-Progress) für Aufgaben."""
+    all_count, open_count, done_count = controller.get_task_counts()
+    percent_done = int(round((done_count / all_count) * 100)) if all_count else 0
+
+    with st.container(border=True):
+        st.write("**KPI & Fortschritt**")
+
+        c1, c2, c3 = st.columns(3, gap="small")
+        with c1:
+            st.metric("Gesamt", all_count)
+        with c2:
+            st.metric("Offen", open_count)
+        with c3:
+            st.metric("Erledigt", done_count)
+
+        st.caption(f"Erledigt: {done_count}/{all_count} ({percent_done}%)")
+        st.progress(percent_done)
 
 
 def _render_add_form(controller: TodoController) -> None:
@@ -499,4 +521,4 @@ def _render_list_spacer(displayed_count: int) -> None:
         rem = (EMPTY_LIST_SPACER_REM + EMPTY_INFO_EST_REM) - (displayed_count * TASK_CARD_EST_REM)
 
     if rem > 0:
-        st.markdown(f"<div style='height:{rem}rem;'></div>")
+        st.markdown(f"<div style='height:{rem}rem;'></div>", unsafe_allow_html=True)
