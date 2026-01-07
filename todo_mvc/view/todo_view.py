@@ -97,7 +97,7 @@ def render_app(controller: TodoController) -> None:
 
     # Responsive Layout: Desktop = 2 Spalten, Mobile = 1 Spalte (automatisch durch Streamlit)
     # Auf kleinen Screens stacken die Spalten automatisch
-    col_add, col_kpi = st.columns([0.65, 0.35], gap="small")
+    col_add, col_kpi = st.columns([0.65, 0.35], gap="small", vertical_alignment="top")
     
     with col_add:
         _render_add_form(controller)
