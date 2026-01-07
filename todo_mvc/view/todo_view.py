@@ -7,11 +7,11 @@ import streamlit as st
 from controller.todo_controller import TodoController
 from model.constants import (
     CATEGORY_NONE_LABEL,
-    DEFAULT_PRIORITY,
     FILTER_ALL,
     FILTER_OPEN,
     FILTER_DONE,
     PRIORITY_OPTIONS,
+    PRIORITY_NONE_LABEL,
     PRIO_ICONS,
     ICON_ADD_CIRCLE,
     ICON_EDIT,
@@ -27,9 +27,6 @@ ROW_COLS = [0.035, 0.885, 0.08]
 
 # UI-Label für "Kategorien verwalten" direkt in der Kategorie-Selectbox
 CAT_MANAGE_LABEL = "➕ Kategorien verwalten…"
-
-# UI-Placeholder für Priorität
-PRIO_PLACEHOLDER = "Priorität auswählen…"
 
 
 def render_app(controller: TodoController) -> None:
@@ -94,33 +91,19 @@ def _render_add_form(controller: TodoController) -> None:
         col_prio, col_cat = st.columns([0.5, 0.5], vertical_alignment="bottom")
 
         with col_prio:
-            # UI-Key getrennt vom echten Key, damit wir "Priorität auswählen…" anzeigen können
-            prio_real_key = "new_priority"
-            prio_ui_key = "new_priority_ui"
+            prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
 
-            # echtes Feld hat weiterhin einen sinnvollen Default (für Add-Logik)
-            st.session_state.setdefault(prio_real_key, DEFAULT_PRIORITY)
-
-            prio_options = [PRIO_PLACEHOLDER] + list(PRIORITY_OPTIONS)
-
-            # UI initial: Placeholder (oder bereits gewählte Priorität)
-            st.session_state.setdefault(prio_ui_key, PRIO_PLACEHOLDER)
-            if st.session_state.get(prio_real_key) in PRIORITY_OPTIONS and st.session_state[prio_ui_key] == PRIO_PLACEHOLDER:
-                # falls schon mal gesetzt, UI synchronisieren
-                st.session_state[prio_ui_key] = st.session_state[prio_real_key]
+            # Default ist "Priorität auswählen" (= keine Priorität)
+            st.session_state.setdefault("new_priority", PRIORITY_NONE_LABEL)
 
             def _on_new_priority_change() -> None:
-                sel = st.session_state.get(prio_ui_key, PRIO_PLACEHOLDER)
-                if sel in PRIORITY_OPTIONS:
-                    st.session_state[prio_real_key] = sel
-                else:
-                    # Placeholder ausgewählt -> echtes Feld bleibt Default
-                    st.session_state[prio_real_key] = DEFAULT_PRIORITY
+                sel = st.session_state.get("new_priority", PRIORITY_NONE_LABEL)
+                # Wert bleibt wie ausgewählt - wird im Controller normalisiert
 
             st.selectbox(
                 "Priorität",
                 options=prio_options,
-                key=prio_ui_key,
+                key="new_priority",
                 label_visibility="collapsed",
                 on_change=_on_new_priority_change,
             )
@@ -418,13 +401,16 @@ def _render_task_view_content(task) -> None:
             gap="small",
         )
 
-        priority = getattr(task, "priority", DEFAULT_PRIORITY)
+        priority = getattr(task, "priority", None)
 
         with col_dead:
             st.caption(task.due_date.strftime("%d.%m.%Y") if task.due_date else "")
         with col_prio:
-            icon = PRIO_ICONS.get(priority, PRIO_ICONS[DEFAULT_PRIORITY])
-            st.caption(f"{icon} {priority}")
+            if priority and priority in PRIO_ICONS:
+                icon = PRIO_ICONS[priority]
+                st.caption(f"{icon} {priority}")
+            else:
+                st.caption("")
         with col_cat:
             st.caption(task.category or "")
 
@@ -438,8 +424,12 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
     )
 
     # Initialwerte setzen
+    current_priority = getattr(task, "priority", None)
     st.session_state.setdefault(f"title_{task.id}", task.title)
-    st.session_state.setdefault(f"prio_{task.id}", getattr(task, "priority", DEFAULT_PRIORITY))
+    st.session_state.setdefault(
+        f"prio_{task.id}",
+        current_priority if current_priority else PRIORITY_NONE_LABEL,
+    )
     st.session_state.setdefault(
         f"cat_sel_{task.id}",
         task.category if task.category else CATEGORY_NONE_LABEL,
@@ -463,9 +453,10 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             _render_due_date_input(controller, task)
 
         with col_prio:
+            prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
             st.selectbox(
                 "Priorität",
-                PRIORITY_OPTIONS,
+                prio_options,
                 key=f"prio_{task.id}",
                 label_visibility="collapsed",
             )
@@ -514,7 +505,7 @@ def _render_task_view_buttons(controller: TodoController, task) -> None:
     """Rendert die Buttons im Ansichtsmodus."""
     btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
 
-    priority = getattr(task, "priority", DEFAULT_PRIORITY)
+    priority = getattr(task, "priority", None)
 
     with btn1:
         st.button(
@@ -542,7 +533,7 @@ def _render_task_edit_buttons(controller: TodoController, task) -> None:
     """Rendert die Buttons im Bearbeitungsmodus."""
     btn1, _gap, btn2 = st.columns([0.35, 0.05, 0.6], gap="small")
 
-    priority = getattr(task, "priority", DEFAULT_PRIORITY)
+    priority = getattr(task, "priority", None)
 
     with btn1:
         st.button(

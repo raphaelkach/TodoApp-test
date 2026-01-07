@@ -17,4 +17,4 @@ class Task:
     done: bool = False
     due_date: date | None = None
     category: str | None = None
-    priority: str = DEFAULT_PRIORITY
+    priority: str | None = DEFAULT_PRIORITY

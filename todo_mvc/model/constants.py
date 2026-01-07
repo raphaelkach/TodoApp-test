@@ -5,7 +5,8 @@ from __future__ import annotations
 # Prioritäten
 PRIORITIES: set[str] = {"Niedrig", "Mittel", "Hoch"}
 PRIORITY_OPTIONS: list[str] = ["Niedrig", "Mittel", "Hoch"]
-DEFAULT_PRIORITY: str = "Mittel"
+DEFAULT_PRIORITY: str | None = None
+PRIORITY_NONE_LABEL: str = "Priorität auswählen"
 
 # Kategorien
 MAX_CATEGORIES: int = 5

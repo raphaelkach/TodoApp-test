@@ -9,7 +9,7 @@ from model.entities import Task
 from model.service import TodoService
 from model.constants import (
     CATEGORY_NONE_LABEL,
-    DEFAULT_PRIORITY,
+    PRIORITY_NONE_LABEL,
     FILTER_ALL,
     FILTER_OPEN,
     FILTER_DONE,
@@ -48,7 +48,7 @@ class TodoController:
             UI_EDITING_ID: None,
             UI_NEW_TITLE: "",
             UI_ADD_DUE_DATE: None,
-            UI_NEW_PRIORITY: DEFAULT_PRIORITY,
+            UI_NEW_PRIORITY: PRIORITY_NONE_LABEL,
             UI_NEW_CATEGORY: CATEGORY_NONE_LABEL,
             UI_FILTER_RAW: FILTER_ALL,
             UI_CAT_NEW_NAME: "",
@@ -176,7 +176,7 @@ class TodoController:
 
         due_date = self._ui.get(UI_ADD_DUE_DATE)
         category = self._normalize_category(self._ui.get(UI_NEW_CATEGORY))
-        priority = self._ui.get(UI_NEW_PRIORITY, DEFAULT_PRIORITY)
+        priority = self._normalize_priority(self._ui.get(UI_NEW_PRIORITY))
 
         if self._service.add_task(title, due_date, category, priority):
             self._reset_add_form()
@@ -185,7 +185,7 @@ class TodoController:
         """Setzt das Hinzufügen-Formular zurück."""
         self._ui[UI_NEW_TITLE] = ""
         self._ui[UI_ADD_DUE_DATE] = None
-        self._ui[UI_NEW_PRIORITY] = DEFAULT_PRIORITY
+        self._ui[UI_NEW_PRIORITY] = PRIORITY_NONE_LABEL
         self._ui[UI_NEW_CATEGORY] = CATEGORY_NONE_LABEL
 
     def delete_task(self, task_id: int) -> None:
@@ -205,13 +205,13 @@ class TodoController:
         current_title: str,
         current_due: date | None,
         current_cat: str | None,
-        current_prio: str,
+        current_prio: str | None,
     ) -> None:
         """Startet den Bearbeitungsmodus für einen Task."""
         self._ui[UI_EDIT_SESSION] = self._ui.get(UI_EDIT_SESSION, 0) + 1
         self._ui[UI_EDITING_ID] = task_id
         self._ui[f"title_{task_id}"] = current_title
-        self._ui[f"prio_{task_id}"] = current_prio
+        self._ui[f"prio_{task_id}"] = current_prio if current_prio else PRIORITY_NONE_LABEL
         self._ui[f"cat_sel_{task_id}"] = current_cat or CATEGORY_NONE_LABEL
         self._ui[f"due_value_{task_id}"] = current_due
 
@@ -219,7 +219,7 @@ class TodoController:
         """Speichert die Bearbeitung eines Tasks."""
         title = self._ui.get(f"title_{task_id}", "")
         due_date = self._ui.get(f"due_value_{task_id}")
-        priority = self._ui.get(f"prio_{task_id}", DEFAULT_PRIORITY)
+        priority = self._normalize_priority(self._ui.get(f"prio_{task_id}"))
         category = self._normalize_category(self._ui.get(f"cat_sel_{task_id}"))
 
         self._service.update_task(
@@ -229,6 +229,7 @@ class TodoController:
             category=category,
             priority=priority,
             update_due_date=True,
+            update_priority=True,
         )
 
         self._cleanup_edit_state(task_id)
@@ -239,11 +240,11 @@ class TodoController:
         original_title: str,
         original_due: date | None,
         original_cat: str | None,
-        original_prio: str,
+        original_prio: str | None,
     ) -> None:
         """Bricht die Bearbeitung ab und stellt Originalwerte wieder her."""
         self._ui[f"title_{task_id}"] = original_title
-        self._ui[f"prio_{task_id}"] = original_prio
+        self._ui[f"prio_{task_id}"] = original_prio if original_prio else PRIORITY_NONE_LABEL
         self._ui[f"cat_sel_{task_id}"] = original_cat or CATEGORY_NONE_LABEL
         self._cleanup_edit_state(task_id)
 
@@ -296,6 +297,12 @@ class TodoController:
     def _normalize_category(self, value: str | None) -> str | None:
         """Normalisiert einen Kategorie-Wert."""
         if not value or value == CATEGORY_NONE_LABEL:
+            return None
+        return value
+
+    def _normalize_priority(self, value: str | None) -> str | None:
+        """Normalisiert einen Priorität-Wert."""
+        if not value or value == PRIORITY_NONE_LABEL:
             return None
         return value
 

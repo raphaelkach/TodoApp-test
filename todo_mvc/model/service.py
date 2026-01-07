@@ -27,10 +27,12 @@ class TodoService:
         title = (title or "").strip()
         return title if title else None
 
-    def _validate_priority(self, priority: str | None) -> str:
-        """Validiert und normalisiert eine Priorität."""
-        priority = (priority or "").strip().capitalize()
-        return priority if priority in PRIORITIES else DEFAULT_PRIORITY
+    def _validate_priority(self, priority: str | None) -> str | None:
+        """Validiert und normalisiert eine Priorität. None ist erlaubt."""
+        if priority is None:
+            return None
+        priority = priority.strip().capitalize()
+        return priority if priority in PRIORITIES else None
 
     def _validate_category(self, category: str | None) -> str | None:
         """Validiert eine Kategorie gegen existierende Kategorien."""
@@ -77,7 +79,7 @@ class TodoService:
         title: str,
         due_date: date | None = None,
         category: str | None = None,
-        priority: str = DEFAULT_PRIORITY,
+        priority: str | None = DEFAULT_PRIORITY,
     ) -> bool:
         """Fügt einen neuen Task hinzu. Gibt True zurück bei Erfolg."""
         validated_title = self._validate_title(title)
@@ -124,7 +126,7 @@ class TodoService:
         validated_category = self._validate_category(category)
         self._repo.update(task_id, category=validated_category)
 
-    def set_priority(self, task_id: int, priority: str) -> None:
+    def set_priority(self, task_id: int, priority: str | None) -> None:
         """Setzt die Priorität eines Tasks."""
         validated_priority = self._validate_priority(priority)
         self._repo.update(task_id, priority=validated_priority)
@@ -137,6 +139,7 @@ class TodoService:
         category: str | None = None,
         priority: str | None = None,
         update_due_date: bool = False,
+        update_priority: bool = False,
     ) -> bool:
         """
         Aktualisiert einen Task mit mehreren Attributen auf einmal.
@@ -156,7 +159,7 @@ class TodoService:
         if category is not None:
             updates["category"] = self._validate_category(category)
 
-        if priority is not None:
+        if update_priority:
             updates["priority"] = self._validate_priority(priority)
 
         if updates:
