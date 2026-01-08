@@ -36,6 +36,7 @@ def get_responsive_css() -> str:
     Gibt das CSS für die App zurück.
 
     Einheitliches, schmales Layout für alle Bildschirmgrößen.
+    Überschreibt Streamlits internes Column-Breaking bei ~640px.
     """
     return """
     <style>
@@ -43,12 +44,21 @@ def get_responsive_css() -> str:
         padding-top: 2rem;
         padding-left: 1rem;
         padding-right: 1rem;
-        max-width: 30rem;
+        max-width: 32rem;
         margin: 0 auto;
     }
-    
+
     h1 {
         text-align: center;
+    }
+    
+    /* Verhindert Streamlits automatisches Column-Stacking */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        min-width: 0 !important;
     }
     </style>
     """
