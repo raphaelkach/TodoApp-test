@@ -133,7 +133,7 @@ def _render_add_form(controller: TodoController) -> None:
             )
 
         # Zeile 2: Priorität + Kategorie
-        col_prio, col_cat = st.columns([0.5, 0.5], gap="small")
+        col_prio, col_cat = st.columns([0.45, 0.55], gap="small")
 
         with col_prio:
             prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
@@ -397,33 +397,45 @@ def _render_task_row(controller: TodoController, task) -> None:
     with st.container(border=True):
         editing = controller.is_editing(task.id)
 
-        # Spalten: Checkbox | Inhaltsbereich | Buttons
-        col_chk, col_main, col_buttons = st.columns(
-            [0.06, 0.78, 0.16],
-            gap="small",
-        )
+        if editing:
+            # Bearbeitungsmodus: Checkbox + Inhaltsbereich (Buttons in Zeilen integriert)
+            col_chk, col_main = st.columns([0.06, 0.94], gap="small")
 
-        with col_chk:
-            st.checkbox(
-                "\u200b",
-                value=task.done,
-                key=f"done_{task.id}",
-                label_visibility="collapsed",
-                on_change=controller.toggle_done,
-                args=(task.id,),
-                help="Als erledigt markieren",
+            with col_chk:
+                st.checkbox(
+                    "\u200b",
+                    value=task.done,
+                    key=f"done_{task.id}",
+                    label_visibility="collapsed",
+                    on_change=controller.toggle_done,
+                    args=(task.id,),
+                    help="Als erledigt markieren",
+                )
+
+            with col_main:
+                _render_task_edit_content(controller, task)
+        else:
+            # Ansichtsmodus: Checkbox | Inhaltsbereich | Buttons
+            col_chk, col_main, col_buttons = st.columns(
+                [0.06, 0.78, 0.16],
+                gap="small",
             )
 
-        with col_main:
-            if editing:
-                _render_task_edit_content(controller, task)
-            else:
+            with col_chk:
+                st.checkbox(
+                    "\u200b",
+                    value=task.done,
+                    key=f"done_{task.id}",
+                    label_visibility="collapsed",
+                    on_change=controller.toggle_done,
+                    args=(task.id,),
+                    help="Als erledigt markieren",
+                )
+
+            with col_main:
                 _render_task_view_content(task)
 
-        with col_buttons:
-            if editing:
-                _render_task_edit_buttons(controller, task)
-            else:
+            with col_buttons:
                 _render_task_view_buttons(controller, task)
 
 
@@ -437,18 +449,18 @@ def _render_task_view_content(task) -> None:
 
     # Meta-Informationen in einer Zeile
     meta_parts = []
-    
+
     if task.due_date:
         meta_parts.append(task.due_date.strftime("%d.%m.%Y"))
-    
+
     priority = getattr(task, "priority", None)
     if priority and priority in PRIO_ICONS:
         icon = PRIO_ICONS[priority]
         meta_parts.append(f"{icon} {priority}")
-    
+
     if task.category:
         meta_parts.append(task.category)
-    
+
     if meta_parts:
         st.caption(" · ".join(meta_parts))
 
@@ -466,18 +478,35 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         task.category if task.category else CATEGORY_NONE_LABEL,
     )
 
-    # Titel
-    st.text_input(
-        "Titel",
-        key=f"title_{task.id}",
-        label_visibility="collapsed",
-    )
+    # Zeile 1: Titel + Deadline + Abbrechen
+    col_title, col_dead, col_cancel = st.columns(
+        [0.40, 0.45, 0.15], gap="small")
 
-    # Meta-Felder: Deadline | Priorität | Kategorie
-    col_dead, col_prio, col_cat = st.columns(3, gap="small")
+    with col_title:
+        st.text_input(
+            "Titel",
+            key=f"title_{task.id}",
+            label_visibility="collapsed",
+        )
 
     with col_dead:
         _render_due_date_input(controller, task)
+
+    with col_cancel:
+        priority = getattr(task, "priority", None)
+        st.button(
+            "\u200b",
+            icon=ICON_CANCEL,
+            type="tertiary",
+            help="Abbrechen",
+            key=f"cancel_{task.id}",
+            on_click=controller.cancel_edit,
+            args=(task.id, task.title, task.due_date, task.category, priority),
+            use_container_width=True,
+        )
+
+    # Zeile 2: Priorität + Kategorie + Speichern
+    col_prio, col_cat, col_save = st.columns([0.35, 0.50, 0.15], gap="small")
 
     with col_prio:
         prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
@@ -501,6 +530,18 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             key=f"cat_sel_{task.id}",
             label_visibility="collapsed",
             disabled=disabled,
+        )
+
+    with col_save:
+        st.button(
+            "\u200b",
+            icon=ICON_SAVE,
+            type="tertiary",
+            help="Speichern",
+            key=f"save_{task.id}",
+            on_click=controller.save_edit,
+            args=(task.id,),
+            use_container_width=True,
         )
 
 
@@ -555,35 +596,5 @@ def _render_task_view_buttons(controller: TodoController, task) -> None:
             key=f"del_{task.id}",
             on_click=controller.delete_task,
             args=(task.id,),
-            use_container_width=True,
-        )
-
-
-def _render_task_edit_buttons(controller: TodoController, task) -> None:
-    """Rendert die Buttons im Bearbeitungsmodus."""
-    btn1, btn2 = st.columns(2, gap="small")
-
-    priority = getattr(task, "priority", None)
-
-    with btn1:
-        st.button(
-            "\u200b",
-            icon=ICON_SAVE,
-            type="tertiary",
-            help="Speichern",
-            key=f"save_{task.id}",
-            on_click=controller.save_edit,
-            args=(task.id,),
-            use_container_width=True,
-        )
-    with btn2:
-        st.button(
-            "\u200b",
-            icon=ICON_CANCEL,
-            type="tertiary",
-            help="Abbrechen",
-            key=f"cancel_{task.id}",
-            on_click=controller.cancel_edit,
-            args=(task.id, task.title, task.due_date, task.category, priority),
             use_container_width=True,
         )

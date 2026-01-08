@@ -10,7 +10,7 @@ PRIORITY_NONE_LABEL: str = "Priorität auswählen"
 
 # Kategorien
 MAX_CATEGORIES: int = 5
-CATEGORY_NONE_LABEL: str = "Kategorie wählen"
+CATEGORY_NONE_LABEL: str = "Kategorie auswählen"
 
 # Filter
 FILTER_ALL: str = "Alle"
