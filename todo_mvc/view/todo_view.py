@@ -73,7 +73,6 @@ def get_responsive_css() -> str:
         }
         
         h1 {
-            font-size: 1.75rem !important;
             text-align: center;
         }
         
@@ -88,6 +87,35 @@ def get_responsive_css() -> str:
             min-height: 2.75em;
         }
         
+        /* =============================================
+           Alle Spalten grundsätzlich NICHT umbrechen
+           ============================================= */
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+        
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+        
+        /* =============================================
+           AUSNAHME: Top-Row mit "Neue Aufgabe" Container
+           Verwendet :has() um Row zu identifizieren die 
+           einen Container mit "Neue Aufgabe" Text enthält
+           ============================================= */
+        [data-testid="stHorizontalBlock"]:has(.top-row-marker) {
+            flex-wrap: wrap !important;
+            flex-direction: column !important;
+        }
+        
+        [data-testid="stHorizontalBlock"]:has(.top-row-marker) > [data-testid="stColumn"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
     }
     </style>
     """
@@ -100,8 +128,7 @@ def render_app(controller: TodoController) -> None:
 
     st.title("Todo-App")
 
-    # Responsive Layout: Desktop = 2 Spalten, Mobile = 1 Spalte (automatisch durch Streamlit)
-    # Auf kleinen Screens stacken die Spalten automatisch
+    # Responsive Layout: Desktop = 2 Spalten, Mobile = 1 Spalte
     col_add, col_kpi = st.columns(
         [0.65, 0.35], gap="small", vertical_alignment="top")
 
@@ -148,6 +175,8 @@ def _render_kpi_panel(controller: TodoController) -> None:
 def _render_add_form(controller: TodoController) -> None:
     """Rendert das Formular zum Hinzufügen neuer Aufgaben."""
     with st.container(border=True):
+        # Unsichtbarer Marker für CSS :has() Selektor
+        st.markdown('<span class="top-row-marker" style="display:none;"></span>', unsafe_allow_html=True)
         st.write("**Neue Aufgabe**")
 
         # Responsive Zeile 1: Titel (größer) + Deadline (kleiner)
@@ -490,8 +519,7 @@ def _render_task_view_content(task) -> None:
         priority = getattr(task, "priority", None)
 
         with col_dead:
-            st.caption(task.due_date.strftime(
-                "%d.%m.%Y") if task.due_date else "")
+            st.caption(task.due_date.strftime("%d.%m.%Y") if task.due_date else "")
         with col_prio:
             if priority and priority in PRIO_ICONS:
                 icon = PRIO_ICONS[priority]
