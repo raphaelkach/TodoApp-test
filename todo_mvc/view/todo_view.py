@@ -76,6 +76,15 @@ def get_responsive_css() -> str:
         margin-top: -0.75rem !important;
         padding-top: 0 !important;
     }
+    
+    /* Angleichung von Kategorie-Text und Input-Feld */
+    .category-name-text {
+        padding: 0.4rem 0.82rem;
+        line-height: 1.6;
+        min-height: 2.5rem;
+        display: flex;
+        align-items: center;
+    }
     </style>
     """
 
@@ -281,8 +290,8 @@ def _render_category_management(controller: TodoController) -> None:
 
 def _render_category_edit_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Bearbeitungsmodus."""
-    col_name, col_buttons, _col_spacer = st.columns(
-        [0.55, 0.35, 0.10],
+    col_name, col_btn1, col_btn2, _col_spacer = st.columns(
+        [0.55, 0.175, 0.175, 0.10],
         gap="small",
     )
 
@@ -290,67 +299,63 @@ def _render_category_edit_row(controller: TodoController, cat: str, index: int) 
         st.text_input("Umbenennen", key="cat_rename_value",
                       label_visibility="collapsed")
 
-    with col_buttons:
-        btn1, btn2 = st.columns(2, gap="small")
-
-        with btn1:
-            st.button(
-                "\u200b",
-                icon=ICON_SAVE,
-                type="tertiary",
-                key=f"cat_save_{index}",
-                on_click=controller.save_rename_category,
-                args=(cat,),
-                help="Speichern",
-                use_container_width=True,
-            )
-        with btn2:
-            st.button(
-                "\u200b",
-                icon=ICON_CANCEL,
-                type="tertiary",
-                key=f"cat_cancel_{index}",
-                on_click=controller.cancel_rename_category,
-                help="Abbrechen",
-                use_container_width=True,
-            )
+    with col_btn1:
+        st.button(
+            "\u200b",
+            icon=ICON_SAVE,
+            type="tertiary",
+            key=f"cat_save_{index}",
+            on_click=controller.save_rename_category,
+            args=(cat,),
+            help="Speichern",
+            use_container_width=True,
+        )
+    
+    with col_btn2:
+        st.button(
+            "\u200b",
+            icon=ICON_CANCEL,
+            type="tertiary",
+            key=f"cat_cancel_{index}",
+            on_click=controller.cancel_rename_category,
+            help="Abbrechen",
+            use_container_width=True,
+        )
 
 
 def _render_category_view_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Ansichtsmodus."""
-    col_name, col_buttons, _col_spacer = st.columns(
-        [0.55, 0.35, 0.10],
+    col_name, col_btn1, col_btn2, _col_spacer = st.columns(
+        [0.55, 0.175, 0.175, 0.10],
         gap="small",
     )
 
     with col_name:
-        st.write(cat)
+        st.markdown(f'<div class="category-name-text">{cat}</div>', unsafe_allow_html=True)
 
-    with col_buttons:
-        btn1, btn2 = st.columns(2, gap="small")
-
-        with btn1:
-            st.button(
-                "\u200b",
-                icon=ICON_EDIT,
-                type="tertiary",
-                key=f"cat_edit_{index}",
-                on_click=controller.start_rename_category,
-                args=(cat,),
-                help="Umbenennen",
-                use_container_width=True,
-            )
-        with btn2:
-            st.button(
-                "\u200b",
-                icon=ICON_DELETE,
-                type="tertiary",
-                key=f"cat_del_{index}",
-                on_click=controller.delete_category,
-                args=(cat,),
-                help="Löschen",
-                use_container_width=True,
-            )
+    with col_btn1:
+        st.button(
+            "\u200b",
+            icon=ICON_EDIT,
+            type="tertiary",
+            key=f"cat_edit_{index}",
+            on_click=controller.start_rename_category,
+            args=(cat,),
+            help="Umbenennen",
+            use_container_width=True,
+        )
+    
+    with col_btn2:
+        st.button(
+            "\u200b",
+            icon=ICON_DELETE,
+            type="tertiary",
+            key=f"cat_del_{index}",
+            on_click=controller.delete_category,
+            args=(cat,),
+            help="Löschen",
+            use_container_width=True,
+        )
 
 
 def _render_task_list(controller: TodoController) -> None:
