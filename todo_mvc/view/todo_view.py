@@ -56,11 +56,6 @@ def get_responsive_css() -> str:
         margin: 0 auto;
     }
     
-    /* Metriken-Größe für gleiche Höhe mit "Neue Aufgabe" */
-    [data-testid="stMetricValue"] {
-        font-size: 2.5rem !important;
-    }
-    
     h1 {
     text-align: center;
     }
@@ -92,6 +87,7 @@ def get_responsive_css() -> str:
         .stDateInput > div > div > input {
             min-height: 2.75em;
         }
+        
     }
     </style>
     """
@@ -127,14 +123,23 @@ def _render_kpi_panel(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Fortschritt**")
 
-        # 3 Metriken nebeneinander - stacken auf Mobile automatisch
-        c1, c2, c3 = st.columns(3, gap="small")
-        with c1:
-            st.metric("Gesamt", all_count)
-        with c2:
-            st.metric("Offen", open_count)
-        with c3:
-            st.metric("Erledigt", done_count)
+        # Custom HTML für Metriken - bricht nie um
+        st.markdown(f"""
+        <div style="display: flex; gap: 0.5rem; justify-content: space-between; margin-bottom: 0.5rem;">
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 0.85rem; opacity: 0.6;">Gesamt</div>
+                <div style="font-size: 1.8rem; font-weight: 600;">{all_count}</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 0.85rem; opacity: 0.6;">Offen</div>
+                <div style="font-size: 1.8rem; font-weight: 600;">{open_count}</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 0.85rem; opacity: 0.6;">Erledigt</div>
+                <div style="font-size: 1.8rem; font-weight: 600;">{done_count}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         st.caption(f"Erledigt: {done_count}/{all_count} ({percent_done}%)")
         st.progress(percent_done)
