@@ -76,20 +76,13 @@ def get_responsive_css() -> str:
             text-align: center;
         }
         
-        /* Größere Touch-Targets */
-        .stButton > button {
-            min-height: 2.75em;
-        }
-        
-        .stTextInput > div > div > input,
-        .stSelectbox > div > div > div,
         .stDateInput > div > div > input {
-            min-height: 2.75em;
+            min-height: 2.75em !important;
+            padding-top: 0.75em !important;
+            padding-bottom: 0.75em !important;
+            box-sizing: border-box !important;
         }
         
-        /* =============================================
-           Alle Spalten grundsätzlich NICHT umbrechen
-           ============================================= */
         [data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
@@ -101,11 +94,6 @@ def get_responsive_css() -> str:
             min-width: 0 !important;
         }
         
-        /* =============================================
-           AUSNAHME: Top-Row mit "Neue Aufgabe" Container
-           Verwendet :has() um Row zu identifizieren die 
-           einen Container mit "Neue Aufgabe" Text enthält
-           ============================================= */
         [data-testid="stHorizontalBlock"]:has(.top-row-marker) {
             flex-wrap: wrap !important;
             flex-direction: column !important;
@@ -176,8 +164,7 @@ def _render_add_form(controller: TodoController) -> None:
     """Rendert das Formular zum Hinzufügen neuer Aufgaben."""
     with st.container(border=True):
         # Unsichtbarer Marker für CSS :has() Selektor
-        st.markdown('<span class="top-row-marker" style="display:none;"></span>', unsafe_allow_html=True)
-        st.write("**Neue Aufgabe**")
+        st.markdown('<span class="top-row-marker"></span>**Neue Aufgabe**', unsafe_allow_html=True)
 
         # Responsive Zeile 1: Titel (größer) + Deadline (kleiner)
         # Auf Mobile stacken diese automatisch
