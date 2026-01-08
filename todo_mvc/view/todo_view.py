@@ -133,7 +133,7 @@ def _render_add_form(controller: TodoController) -> None:
             )
 
         # Zeile 2: Priorität + Kategorie
-        col_prio, col_cat = st.columns([0.45, 0.55], gap="small")
+        col_prio, col_cat = st.columns([0.50, 0.50], gap="small")
 
         with col_prio:
             prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
