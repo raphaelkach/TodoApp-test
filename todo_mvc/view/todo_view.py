@@ -44,10 +44,10 @@ def get_responsive_css() -> str:
         padding-top: 2rem;
         padding-left: 1rem;
         padding-right: 1rem;
-        max-width: 32rem;
+        max-width: 30rem;
         margin: 0 auto;
     }
-
+    
     h1 {
         text-align: center;
     }
@@ -114,7 +114,7 @@ def _render_add_form(controller: TodoController) -> None:
         st.write("**Neue Aufgabe**")
 
         # Zeile 1: Titel + Deadline
-        col_title, col_dead = st.columns([0.72, 0.28], gap="small")
+        col_title, col_dead = st.columns([0.65, 0.35], gap="small")
 
         with col_title:
             st.text_input(
@@ -210,7 +210,7 @@ def _render_category_management(controller: TodoController) -> None:
 
     # Layout: Input + Button + Close
     col_input, col_btn, col_close = st.columns(
-        [0.65, 0.25, 0.10],
+        [0.55, 0.35, 0.10],
         gap="small",
     )
 
@@ -266,7 +266,7 @@ def _render_category_management(controller: TodoController) -> None:
 def _render_category_edit_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Bearbeitungsmodus."""
     col_name, col_buttons, _col_spacer = st.columns(
-        [0.65, 0.25, 0.10],
+        [0.55, 0.35, 0.10],
         gap="small",
     )
 
@@ -303,7 +303,7 @@ def _render_category_edit_row(controller: TodoController, cat: str, index: int) 
 def _render_category_view_row(controller: TodoController, cat: str, index: int) -> None:
     """Rendert eine Kategorie-Zeile im Ansichtsmodus."""
     col_name, col_buttons, _col_spacer = st.columns(
-        [0.65, 0.25, 0.10],
+        [0.55, 0.35, 0.10],
         gap="small",
     )
 
