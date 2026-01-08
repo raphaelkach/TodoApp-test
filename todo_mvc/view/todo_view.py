@@ -60,6 +60,22 @@ def get_responsive_css() -> str:
     [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
         min-width: 0 !important;
     }
+    
+    /* Reduziere Abstand zwischen Titel und Meta-Informationen */
+    .element-container:has(+ .element-container p[style*="font-size: 0.875rem"]) {
+        margin-bottom: -1rem !important;
+    }
+    
+    /* Alternative: Reduziere Abstand für alle Paragraphen gefolgt von Captions */
+    div[data-testid="stMarkdownContainer"] + div[data-testid="stCaptionContainer"] {
+        margin-top: -1rem !important;
+    }
+    
+    /* Reduziere Abstand bei st.caption direkt */
+    [data-testid="stCaptionContainer"] {
+        margin-top: -0.75rem !important;
+        padding-top: 0 !important;
+    }
     </style>
     """
 
@@ -104,8 +120,8 @@ def _render_kpi_panel(controller: TodoController) -> None:
         </div>
         """, unsafe_allow_html=True)
 
-        st.caption(f"Erledigt: {done_count}/{all_count} ({percent_done}%)")
         st.progress(percent_done)
+        st.caption(f"Erledigt: {done_count}/{all_count} ({percent_done}%)")
 
 
 def _render_add_form(controller: TodoController) -> None:
@@ -399,7 +415,11 @@ def _render_task_row(controller: TodoController, task) -> None:
 
         if editing:
             # Bearbeitungsmodus: Checkbox + Inhaltsbereich (Buttons in Zeilen integriert)
-            col_chk, col_main = st.columns([0.06, 0.94], gap="small")
+            col_chk, col_main = st.columns(
+                [0.06, 0.94], 
+                gap="small",
+                vertical_alignment="center",
+            )
 
             with col_chk:
                 st.checkbox(
@@ -419,6 +439,7 @@ def _render_task_row(controller: TodoController, task) -> None:
             col_chk, col_main, col_buttons = st.columns(
                 [0.06, 0.78, 0.16],
                 gap="small",
+                vertical_alignment="center",
             )
 
             with col_chk:
@@ -441,13 +462,13 @@ def _render_task_row(controller: TodoController, task) -> None:
 
 def _render_task_view_content(task) -> None:
     """Rendert den Inhalt einer Task-Zeile im Ansichtsmodus."""
-    # Titel
+    # Titel in erster Zeile
     if task.done:
         st.markdown(f"~~{task.title}~~")
     else:
         st.write(task.title)
 
-    # Meta-Informationen in einer Zeile
+    # Meta-Informationen in zweiter Zeile
     meta_parts = []
 
     if task.due_date:
@@ -462,7 +483,10 @@ def _render_task_view_content(task) -> None:
         meta_parts.append(task.category)
 
     if meta_parts:
-        st.caption(" · ".join(meta_parts))
+        # Verwende Markdown mit mehr Abstand
+        separator = " &nbsp;&nbsp;·&nbsp;&nbsp; "
+        meta_text = separator.join(meta_parts)
+        st.caption(meta_text)
 
 
 def _render_task_edit_content(controller: TodoController, task) -> None:
