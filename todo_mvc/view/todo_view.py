@@ -478,9 +478,9 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         task.category if task.category else CATEGORY_NONE_LABEL,
     )
 
-    # Zeile 1: Titel + Deadline + Abbrechen
+    # Zeile 1: Titel + Deadline + Abbrechen (verbreitert)
     col_title, col_dead, col_cancel = st.columns(
-        [0.40, 0.45, 0.15], gap="small")
+        [0.45, 0.47, 0.08], gap="small")
 
     with col_title:
         st.text_input(
@@ -505,8 +505,8 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             use_container_width=True,
         )
 
-    # Zeile 2: Priorität + Kategorie + Speichern
-    col_prio, col_cat, col_save = st.columns([0.35, 0.50, 0.15], gap="small")
+    # Zeile 2: Priorität + Kategorie + Speichern (verbreitert)
+    col_prio, col_cat, col_save = st.columns([0.45, 0.47, 0.08], gap="small")
 
     with col_prio:
         prio_options = [PRIORITY_NONE_LABEL] + list(PRIORITY_OPTIONS)
