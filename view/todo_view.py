@@ -136,6 +136,10 @@ def _render_kpi_panel(controller: TodoController) -> None:
 
 def _render_add_form(controller: TodoController) -> None:
     """Rendert das Formular zum Hinzufügen neuer Aufgaben."""
+    # Initialisiere Session State für neue Aufgaben
+    if "new_priority" not in st.session_state:
+        st.session_state.new_priority = None
+    
     with st.container(border=True):
         st.write("**Neue Aufgabe**")
 
@@ -162,17 +166,41 @@ def _render_add_form(controller: TodoController) -> None:
         col_prio, col_cat = st.columns([0.50, 0.50], gap="small")
 
         with col_prio:
+            # Verwende Platzhalter-String statt None
+            prio_placeholder = "Priorität auswählen"
+            prio_options = [prio_placeholder] + PRIORITY_OPTIONS
+            
+            # Initialisiere mit Platzhalter, wenn None
+            if st.session_state.new_priority is None:
+                prio_value = prio_placeholder
+            else:
+                prio_value = st.session_state.new_priority
+            
+            # Temporärer Key für die UI
+            if "new_priority_ui" not in st.session_state:
+                st.session_state.new_priority_ui = prio_value
+            
+            def _on_priority_change():
+                selected = st.session_state.new_priority_ui
+                if selected == prio_placeholder:
+                    st.session_state.new_priority = None
+                else:
+                    st.session_state.new_priority = selected
+            
             st.selectbox(
                 "Priorität",
-                options=[None] + PRIORITY_OPTIONS,
-                format_func=lambda x: "Priorität auswählen" if x is None else x,
-                key="new_priority",
+                options=prio_options,
+                key="new_priority_ui",
+                on_change=_on_priority_change,
                 label_visibility="collapsed",
             )
 
         with col_cat:
             categories = controller.list_categories()
-            cat_options = [None] + categories + ["__manage__"]
+            
+            # Verwende String-Platzhalter statt None
+            cat_placeholder = "Kategorie auswählen"
+            cat_options = [cat_placeholder] + categories + ["__manage__"]
 
             # Separater UI-Key für die Selectbox
             ui_key = "new_category_ui"
@@ -187,22 +215,33 @@ def _render_add_form(controller: TodoController) -> None:
                 if st.session_state[real_key] not in categories:
                     st.session_state[real_key] = None
             
+            # Konvertiere None zu Platzhalter für UI
+            if st.session_state[real_key] is None:
+                display_value = cat_placeholder
+            else:
+                display_value = st.session_state[real_key]
+            
             if ui_key not in st.session_state:
-                st.session_state[ui_key] = st.session_state[real_key]
+                st.session_state[ui_key] = display_value
 
             def _on_category_change():
                 selected = st.session_state.get(ui_key)
                 if selected == "__manage__":
                     st.session_state.show_category_dialog = True
-                    # Setze UI-Key zurück auf den realen Wert
-                    st.session_state[ui_key] = st.session_state[real_key]
+                    # Setze UI-Key zurück auf den Display-Wert
+                    if st.session_state[real_key] is None:
+                        st.session_state[ui_key] = cat_placeholder
+                    else:
+                        st.session_state[ui_key] = st.session_state[real_key]
+                elif selected == cat_placeholder:
+                    st.session_state[real_key] = None
                 else:
                     st.session_state[real_key] = selected
-
+            
             st.selectbox(
                 "Kategorie",
                 options=cat_options,
-                format_func=_format_category_option,
+                format_func=lambda x: CAT_MANAGE_LABEL if x == "__manage__" else x,
                 key=ui_key,
                 on_change=_on_category_change,
                 label_visibility="collapsed",
@@ -230,8 +269,9 @@ def _render_add_form(controller: TodoController) -> None:
                 st.session_state.new_title = ""
                 st.session_state.add_due_date = None
                 st.session_state.new_priority = None
+                st.session_state.new_priority_ui = "Priorität auswählen"
                 st.session_state.new_category = None
-                st.session_state.new_category_ui = None  # Auch UI-Key zurücksetzen
+                st.session_state.new_category_ui = "Kategorie auswählen"
 
         st.button(
             "Hinzufügen",
@@ -434,7 +474,7 @@ def _render_filter(controller: TodoController) -> None:
     """Rendert die Filter-Segmente."""
     options = [FILTER_ALL, FILTER_OPEN, FILTER_DONE]
 
-    # Default-Filter setzen
+    # Default-Filter setzen, falls noch nicht vorhanden
     if "task_filter" not in st.session_state:
         st.session_state.task_filter = FILTER_ALL
 
@@ -443,7 +483,6 @@ def _render_filter(controller: TodoController) -> None:
         st.segmented_control(
             "Filter",
             options=options,
-            default=st.session_state.task_filter,
             label_visibility="collapsed",
             key="task_filter",
         )
@@ -451,7 +490,6 @@ def _render_filter(controller: TodoController) -> None:
         st.radio(
             "Filter",
             options,
-            index=options.index(st.session_state.task_filter),
             horizontal=True,
             label_visibility="collapsed",
             key="task_filter",
@@ -546,12 +584,27 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         st.session_state[f"edit_due_{task.id}"] = task.due_date
         st.session_state[f"edit_priority_{task.id}"] = task.priority
         st.session_state[f"edit_category_{task.id}"] = task.category
+        
+        # Initialisiere auch die UI-Keys
+        prio_placeholder = "Priorität auswählen"
+        cat_placeholder = "Kategorie auswählen"
+        
+        if task.priority is None:
+            st.session_state[f"edit_priority_ui_{task.id}"] = prio_placeholder
+        else:
+            st.session_state[f"edit_priority_ui_{task.id}"] = task.priority
+            
+        if task.category is None:
+            st.session_state[f"edit_category_ui_{task.id}"] = cat_placeholder
+        else:
+            st.session_state[f"edit_category_ui_{task.id}"] = task.category
     
     # Validiere Kategorie: Wenn gelöscht, auf None setzen
     categories = controller.list_categories()
     current_cat = st.session_state.get(f"edit_category_{task.id}")
     if current_cat is not None and current_cat not in categories:
         st.session_state[f"edit_category_{task.id}"] = None
+        st.session_state[f"edit_category_ui_{task.id}"] = "Kategorie auswählen"
 
     # Zeile 1: Titel + Deadline + Abbrechen
     col_title, col_dead, col_cancel = st.columns([0.45, 0.47, 0.08], gap="small")
@@ -579,7 +632,9 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             st.session_state.pop(f"edit_title_{task.id}", None)
             st.session_state.pop(f"edit_due_{task.id}", None)
             st.session_state.pop(f"edit_priority_{task.id}", None)
+            st.session_state.pop(f"edit_priority_ui_{task.id}", None)
             st.session_state.pop(f"edit_category_{task.id}", None)
+            st.session_state.pop(f"edit_category_ui_{task.id}", None)
             st.session_state.editing_task_id = None
 
         st.button(
@@ -596,20 +651,66 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
     col_prio, col_cat, col_save = st.columns([0.45, 0.47, 0.08], gap="small")
 
     with col_prio:
+        # Verwende Platzhalter-String statt None
+        prio_placeholder = "Priorität auswählen"
+        prio_options = [prio_placeholder] + PRIORITY_OPTIONS
+        
+        # Konvertiere aktuellen Wert
+        current_prio = st.session_state.get(f"edit_priority_{task.id}")
+        if current_prio is None or current_prio not in PRIORITY_OPTIONS:
+            display_value = prio_placeholder
+        else:
+            display_value = current_prio
+        
+        # Temporärer UI-Key
+        ui_prio_key = f"edit_priority_ui_{task.id}"
+        if ui_prio_key not in st.session_state:
+            st.session_state[ui_prio_key] = display_value
+        
+        def _on_edit_priority_change():
+            selected = st.session_state[ui_prio_key]
+            if selected == prio_placeholder:
+                st.session_state[f"edit_priority_{task.id}"] = None
+            else:
+                st.session_state[f"edit_priority_{task.id}"] = selected
+        
         st.selectbox(
             "Priorität",
-            options=[None] + PRIORITY_OPTIONS,
-            format_func=lambda x: "Priorität auswählen" if x is None else x,
-            key=f"edit_priority_{task.id}",
+            options=prio_options,
+            key=ui_prio_key,
+            on_change=_on_edit_priority_change,
             label_visibility="collapsed",
         )
 
     with col_cat:
+        # Verwende Platzhalter-String statt None
+        cat_placeholder = "Kategorie auswählen"
+        cat_options = [cat_placeholder] + categories
+        
+        # Konvertiere aktuellen Wert
+        current_cat = st.session_state.get(f"edit_category_{task.id}")
+        if current_cat is None or current_cat not in categories:
+            display_cat_value = cat_placeholder
+        else:
+            display_cat_value = current_cat
+        
+        # Temporärer UI-Key
+        ui_cat_key = f"edit_category_ui_{task.id}"
+        if ui_cat_key not in st.session_state:
+            st.session_state[ui_cat_key] = display_cat_value
+        
+        def _on_edit_category_change():
+            selected = st.session_state[ui_cat_key]
+            if selected == cat_placeholder:
+                st.session_state[f"edit_category_{task.id}"] = None
+            else:
+                st.session_state[f"edit_category_{task.id}"] = selected
+        
         st.selectbox(
             "Kategorie",
-            options=[None] + categories,
-            format_func=lambda x: "Kategorie auswählen" if x is None else x,
-            key=f"edit_category_{task.id}",
+            options=cat_options,
+            key=ui_cat_key,
+            on_change=_on_edit_category_change,
             label_visibility="collapsed",
             disabled=len(categories) == 0,
         )
@@ -635,7 +736,9 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
                 st.session_state.pop(f"edit_title_{task.id}", None)
                 st.session_state.pop(f"edit_due_{task.id}", None)
                 st.session_state.pop(f"edit_priority_{task.id}", None)
+                st.session_state.pop(f"edit_priority_ui_{task.id}", None)
                 st.session_state.pop(f"edit_category_{task.id}", None)
+                st.session_state.pop(f"edit_category_ui_{task.id}", None)
                 st.session_state.editing_task_id = None
 
         st.button(
