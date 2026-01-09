@@ -149,9 +149,8 @@ def _render_add_form(controller: TodoController) -> None:
 
         with col_title:
             st.text_input(
-                "Aufgabe",
+                "Aufgabentitel",
                 placeholder="z.B. Folien wiederholen …",
-                label_visibility="collapsed",
                 key="new_title",
             )
         with col_dead:
@@ -160,7 +159,6 @@ def _render_add_form(controller: TodoController) -> None:
                 key="add_due_date",
                 value=None,
                 min_value=date.today(),
-                label_visibility="collapsed",
                 format="DD.MM.YYYY",
             )
 
