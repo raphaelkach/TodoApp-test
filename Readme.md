@@ -155,7 +155,7 @@ Dabei die Qualität auch berücksichtigen:
 - Gute Lesbarkeit und klar verständlicher Code
 - Konsistente Benennungskonventionen
 
-Dabei soll die Trennung zwischen den controller, model und view ganz klar sein
+Dabei soll die Trennung zwischen den controller, model und view ganz klar sein.
 
 
 
@@ -231,7 +231,6 @@ todo_mvc/
 │   └── todo_controller.py          # Steuerungslogik + UI-State
 └── view/
     └── todo_view.py                # Reine UI-Darstellung
-
 
 
 - 2. Kurze Beschreibung der Architektur

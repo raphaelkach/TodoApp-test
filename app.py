@@ -27,7 +27,7 @@ st.set_page_config(
 # MVC Wiring - Dependency Injection
 repo = SessionStateTaskRepository(st.session_state)
 service = TodoService(repo)
-controller = TodoController(service, st.session_state)
+controller = TodoController(service)  # ✅ Kein ui_state mehr!
 controller.initialize()
 
 # View rendern (enthält responsive CSS)
