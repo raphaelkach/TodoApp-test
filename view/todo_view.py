@@ -10,6 +10,7 @@ Einheitliches, schmales Layout:
 from __future__ import annotations
 
 import streamlit as st
+from datetime import date
 
 from controller.todo_controller import TodoController
 from model.constants import (
@@ -158,6 +159,7 @@ def _render_add_form(controller: TodoController) -> None:
                 "Deadline",
                 key="add_due_date",
                 value=None,
+                min_value=date.today(),
                 label_visibility="collapsed",
                 format="DD.MM.YYYY",
             )
@@ -621,6 +623,7 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             "Deadline",
             key=f"edit_due_{task.id}",
             value=None,
+            min_value=date.today(),
             label_visibility="collapsed",
             format="DD.MM.YYYY",
         )
