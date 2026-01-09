@@ -1,10 +1,5 @@
 """
 Haupteinstiegspunkt der Todo-App.
-
-Responsive Design Features:
-- Wide Layout für Desktop-Optimierung
-- Automatisches Stacken von Spalten auf Mobile durch Streamlit
-- CSS Media Queries für feinere Anpassungen
 """
 
 from __future__ import annotations
@@ -16,7 +11,8 @@ from model.repository import SessionStateTaskRepository
 from model.service import TodoService
 from view.todo_view import render_app
 
-# Page-Konfiguration für responsive Darstellung
+# Page-Konfiguration
+
 st.set_page_config(
     page_title="Todo-App",
     page_icon=":material/task_alt:",
@@ -25,10 +21,19 @@ st.set_page_config(
 )
 
 # MVC Wiring - Dependency Injection
+
+# Repository-Schicht: Datenzugriff auf Session State
 repo = SessionStateTaskRepository(st.session_state)
+
+# Service-Schicht: Geschäftslogik und Validierung
 service = TodoService(repo)
-controller = TodoController(service)  # ✅ Kein ui_state mehr!
+
+# Controller-Schicht: Koordination zwischen View und Service
+controller = TodoController(service)
+
+# Initialisiere Controller (erstellt Session State falls nötig)
 controller.initialize()
 
-# View rendern (enthält responsive CSS)
+# View Rendering
+# View-Schicht: UI-Darstellung und Benutzerinteraktion
 render_app(controller)

@@ -40,6 +40,7 @@ def get_responsive_css() -> str:
     """
     return """
     <style>
+    /* Zentriertes, schmales Layout mit einheitlicher Breite */
     .block-container {
         padding-top: 2rem;
         padding-left: 1rem;
@@ -52,7 +53,7 @@ def get_responsive_css() -> str:
         text-align: center;
     }
     
-    /* Verhindert Streamlits automatisches Column-Stacking */
+    /* Verhindert automatisches Umbrechen von Spalten auf kleinen Bildschirmen */
     [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
     }
@@ -61,17 +62,17 @@ def get_responsive_css() -> str:
         min-width: 0 !important;
     }
     
-    /* Reduziere Abstand zwischen Titel und Meta-Informationen */
+    /* Reduziert Abstand zwischen Titel und Meta-Informationen */
     .element-container:has(+ .element-container p[style*="font-size: 0.875rem"]) {
         margin-bottom: -1rem !important;
     }
     
-    /* Alternative: Reduziere Abstand für alle Paragraphen gefolgt von Captions */
+    /* Alternative: Reduziert Abstand für alle Paragraphen gefolgt von Captions */
     div[data-testid="stMarkdownContainer"] + div[data-testid="stCaptionContainer"] {
         margin-top: -1rem !important;
     }
     
-    /* Reduziere Abstand bei st.caption direkt */
+    /* Reduziert Abstand bei st.caption direkt */
     [data-testid="stCaptionContainer"] {
         margin-top: -0.75rem !important;
         padding-top: 0 !important;
@@ -104,13 +105,16 @@ def render_app(controller: TodoController) -> None:
 
 def _render_kpi_panel(controller: TodoController) -> None:
     """Rendert KPI und Fortschritt (Erledigt-Progress) für Aufgaben."""
+    # Statistiken vom Controller holen
     all_count, open_count, done_count = controller.get_task_counts()
+    
+    # Prozentsatzberechnung (vermeidet Division durch Null)
     percent_done = int(round((done_count / all_count) * 100)) if all_count else 0
 
     with st.container(border=True):
         st.write("**Fortschritt**")
 
-        # Custom HTML für Metriken
+        # Custom HTML für kompakte Metriken-Darstellung
         st.markdown(
             f"""
         <div style="display: flex; gap: 0.5rem; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -131,13 +135,14 @@ def _render_kpi_panel(controller: TodoController) -> None:
             unsafe_allow_html=True,
         )
 
+        # Fortschrittsbalken
         st.progress(percent_done)
         st.caption(f"Erledigt: {done_count}/{all_count} ({percent_done}%)")
 
 
 def _render_add_form(controller: TodoController) -> None:
     """Rendert das Formular zum Hinzufügen neuer Aufgaben."""
-    # Initialisiere Session State für neue Aufgaben
+    # Initialisiert Session State für neue Aufgaben (nur beim ersten Aufruf)
     if "new_priority" not in st.session_state:
         st.session_state.new_priority = None
     
@@ -166,21 +171,22 @@ def _render_add_form(controller: TodoController) -> None:
         col_prio, col_cat = st.columns([0.50, 0.50], gap="small")
 
         with col_prio:
-            # Verwende Platzhalter-String statt None
+            # Verwendet Platzhalter-String statt None (Streamlit kann None nicht als Selectbox-Option verwenden)
             prio_placeholder = "Priorität auswählen"
             prio_options = [prio_placeholder] + PRIORITY_OPTIONS
             
-            # Initialisiere mit Platzhalter, wenn None
+            # Konvertiert None zu Platzhalter für UI-Darstellung
             if st.session_state.new_priority is None:
                 prio_value = prio_placeholder
             else:
                 prio_value = st.session_state.new_priority
             
-            # Temporärer Key für die UI
+            # Temporärer Key für die UI (trennt UI-Darstellung von echtem Wert)
             if "new_priority_ui" not in st.session_state:
                 st.session_state.new_priority_ui = prio_value
             
             def _on_priority_change():
+                """Callback: Synchronisiert UI-Wert mit echtem Wert"""
                 selected = st.session_state.new_priority_ui
                 if selected == prio_placeholder:
                     st.session_state.new_priority = None
@@ -198,24 +204,24 @@ def _render_add_form(controller: TodoController) -> None:
         with col_cat:
             categories = controller.list_categories()
             
-            # Verwende String-Platzhalter statt None
+            # Verwendet String-Platzhalter statt None
             cat_placeholder = "Kategorie auswählen"
             cat_options = [cat_placeholder] + categories + ["__manage__"]
 
-            # Separater UI-Key für die Selectbox
+            # Separater UI-Key für die Selectbox (trennt UI-Darstellung von echtem Wert)
             ui_key = "new_category_ui"
             real_key = "new_category"
             
-            # Initialisiere Keys
+            # Initialisiert Keys
             if real_key not in st.session_state:
                 st.session_state[real_key] = None
             
-            # Validiere: Wenn gespeicherte Kategorie nicht mehr existiert, auf None setzen
+            # Validiert wenn gespeicherte Kategorie nicht mehr existiert, auf None setzen
             if st.session_state[real_key] is not None:
                 if st.session_state[real_key] not in categories:
                     st.session_state[real_key] = None
             
-            # Konvertiere None zu Platzhalter für UI
+            # Konvertiert None zu Platzhalter für UI
             if st.session_state[real_key] is None:
                 display_value = cat_placeholder
             else:
@@ -225,10 +231,12 @@ def _render_add_form(controller: TodoController) -> None:
                 st.session_state[ui_key] = display_value
 
             def _on_category_change():
+                """Callback: Verarbeitet Kategorie-Auswahl oder öffnet Dialog"""
                 selected = st.session_state.get(ui_key)
                 if selected == "__manage__":
+                    # Öffnet Kategorieverwaltung
                     st.session_state.show_category_dialog = True
-                    # Setze UI-Key zurück auf den Display-Wert
+                    # Setzt UI-Key zurück auf den Display-Wert
                     if st.session_state[real_key] is None:
                         st.session_state[ui_key] = cat_placeholder
                     else:
@@ -247,24 +255,26 @@ def _render_add_form(controller: TodoController) -> None:
                 label_visibility="collapsed",
             )
 
-        # ✅ View verwaltet Dialog-State selbst
+        # Kategorieverwaltungs-Dialog anzeigen (falls aktiviert)
         if st.session_state.get("show_category_dialog", False):
             _render_category_management(controller)
 
-        # ✅ Button ruft Controller mit Parametern
+        # Button zum Hinzufügen der Aufgabe
         def _on_add_click():
+            """Callback: Erstellt neue Aufgabe über Controller"""
             title = st.session_state.get("new_title", "").strip()
             if not title:
                 return
 
+            # Ruft Controller mit allen gesammelten Parametern
             success = controller.add_task(
                 title=title,
                 due_date=st.session_state.get("add_due_date"),
-                category=st.session_state.get("new_category"),  # Real key
+                category=st.session_state.get("new_category"),
                 priority=st.session_state.get("new_priority"),
             )
 
-            # ✅ View resettet ihre eigenen Felder
+            # Resettet Formular bei Erfolg
             if success:
                 st.session_state.new_title = ""
                 st.session_state.add_due_date = None
@@ -294,6 +304,7 @@ def _format_category_option(value):
 
 def _render_category_management(controller: TodoController) -> None:
     """Rendert die Kategorieverwaltung."""
+    # Prüft ob noch Kategorien hinzugefügt werden können (max. 5)
     can_add = controller.can_add_category()
 
     # Layout: Input + Button + Close
@@ -309,10 +320,11 @@ def _render_category_management(controller: TodoController) -> None:
         )
 
     with col_btn:
-
         def _on_add_category():
+            """Callback: Erstellt neue Kategorie über Controller"""
             name = st.session_state.get("cat_new_name", "").strip()
             if name and controller.add_category(name):
+                # Leert Input-Feld nach Erfolg
                 st.session_state.cat_new_name = ""
 
         st.button(
@@ -326,8 +338,8 @@ def _render_category_management(controller: TodoController) -> None:
         )
 
     with col_close:
-
         def _close_dialog():
+            """Callback: Schließt Kategorieverwaltung"""
             st.session_state.show_category_dialog = False
             st.rerun()
 
@@ -341,15 +353,17 @@ def _render_category_management(controller: TodoController) -> None:
             use_container_width=True,
         )
 
+    # Zeigt Hinweis wenn Limit erreicht
     if not can_add:
         st.caption("Maximal 5 Kategorien möglich.")
 
+    # Listet existierende Kategorien auf
     current = controller.list_categories()
     if not current:
         st.caption("Noch keine Kategorien vorhanden.")
         return
 
-    # ✅ View verwaltet Rename-State selbst
+    # Rendert jede Kategorie (entweder im Ansichts- oder Bearbeitungsmodus)
     rename_target = st.session_state.get("cat_rename_target")
 
     for i, cat in enumerate(current):
@@ -368,7 +382,7 @@ def _render_category_edit_row(
     )
 
     with col_name:
-        # ✅ Edit-Value in Session State
+        # Initialisiert Edit-Value mit aktuellem Namen (nur beim ersten Mal)
         if "cat_rename_value" not in st.session_state:
             st.session_state.cat_rename_value = cat
 
@@ -377,10 +391,11 @@ def _render_category_edit_row(
         )
 
     with col_btn1:
-
         def _on_save():
+            """Callback: Speichert umbenannte Kategorie"""
             new_name = st.session_state.get("cat_rename_value", "").strip()
             if new_name and controller.rename_category(cat, new_name):
+                # Beendet Bearbeitungsmodus
                 st.session_state.cat_rename_target = None
                 st.session_state.cat_rename_value = ""
 
@@ -395,8 +410,8 @@ def _render_category_edit_row(
         )
 
     with col_btn2:
-
         def _on_cancel():
+            """Callback: Bricht Bearbeitung ab"""
             st.session_state.cat_rename_target = None
             st.session_state.cat_rename_value = ""
 
@@ -420,13 +435,14 @@ def _render_category_view_row(
     )
 
     with col_name:
+        # Zeigt Kategorie-Namen als Text
         st.markdown(
             f'<div class="category-name-text">{cat}</div>', unsafe_allow_html=True
         )
 
     with col_btn1:
-
         def _on_edit():
+            """Callback: Aktiviert Bearbeitungsmodus"""
             st.session_state.cat_rename_target = cat
             st.session_state.cat_rename_value = cat
 
@@ -457,15 +473,18 @@ def _render_task_list(controller: TodoController) -> None:
     with st.container(border=True):
         st.write("**Aufgabenliste**")
 
+        # Rendert Filter-Segmente
         _render_filter(controller)
 
-        # ✅ View holt gefilterte Tasks mit Parameter
+        # Holt gefilterte Tasks vom Controller
         filter_value = st.session_state.get("task_filter", FILTER_ALL)
         tasks = controller.get_filtered_tasks(filter_value)
 
+        # Zeigt Hinweis wenn keine Aufgaben vorhanden
         if not tasks:
             st.info("Noch keine Aufgaben.")
         else:
+            # Rendert jede Aufgabe
             for task in tasks:
                 _render_task_row(controller, task)
 
@@ -474,11 +493,11 @@ def _render_filter(controller: TodoController) -> None:
     """Rendert die Filter-Segmente."""
     options = [FILTER_ALL, FILTER_OPEN, FILTER_DONE]
 
-    # Default-Filter setzen, falls noch nicht vorhanden
+    # Setze Default-Filter (falls noch nicht vorhanden)
     if "task_filter" not in st.session_state:
         st.session_state.task_filter = FILTER_ALL
 
-    # Segmented Control oder Radio (fallback)
+    # Verwendet Segmented Control (wenn verfügbar) oder Radio als Fallback
     if hasattr(st, "segmented_control"):
         st.segmented_control(
             "Filter",
@@ -498,13 +517,13 @@ def _render_filter(controller: TodoController) -> None:
 
 def _render_task_row(controller: TodoController, task) -> None:
     """Rendert eine einzelne Task-Zeile."""
-    # ✅ View verwaltet Edit-State selbst
+    # Prüft ob diese Aufgabe gerade bearbeitet wird
     editing_id = st.session_state.get("editing_task_id")
     is_editing = editing_id == task.id
 
     with st.container(border=True):
         if is_editing:
-            # Bearbeitungsmodus
+            # Bearbeitungsmodus: Checkbox + Formular
             col_chk, col_main = st.columns(
                 [0.06, 0.94], gap="small", vertical_alignment="center"
             )
@@ -524,7 +543,7 @@ def _render_task_row(controller: TodoController, task) -> None:
             with col_main:
                 _render_task_edit_content(controller, task)
         else:
-            # Ansichtsmodus
+            # Ansichtsmodus: Checkbox + Inhalt + Buttons
             col_chk, col_main, col_buttons = st.columns(
                 [0.06, 0.78, 0.16], gap="small", vertical_alignment="center"
             )
@@ -550,13 +569,13 @@ def _render_task_row(controller: TodoController, task) -> None:
 
 def _render_task_view_content(task) -> None:
     """Rendert den Inhalt einer Task-Zeile im Ansichtsmodus."""
-    # Titel in erster Zeile
+    # Titel in erster Zeile (durchgestrichen wenn erledigt)
     if task.done:
         st.markdown(f"~~{task.title}~~")
     else:
         st.write(task.title)
 
-    # Meta-Informationen in zweiter Zeile
+    # Meta-Informationen in zweiter Zeile (Datum, Priorität, Kategorie)
     meta_parts = []
 
     if task.due_date:
@@ -570,6 +589,7 @@ def _render_task_view_content(task) -> None:
     if task.category:
         meta_parts.append(task.category)
 
+    # Zeigt Meta-Informationen mit Trennzeichen
     if meta_parts:
         separator = " &nbsp;&nbsp;·&nbsp;&nbsp; "
         meta_text = separator.join(meta_parts)
@@ -578,14 +598,14 @@ def _render_task_view_content(task) -> None:
 
 def _render_task_edit_content(controller: TodoController, task) -> None:
     """Rendert den Inhalt einer Task-Zeile im Bearbeitungsmodus."""
-    # ✅ View speichert Edit-Daten in eigenen Keys beim ersten Mal
+    # Initialisiert Edit-Daten beim ersten Mal mit aktuellen Task-Werten
     if f"edit_title_{task.id}" not in st.session_state:
         st.session_state[f"edit_title_{task.id}"] = task.title
         st.session_state[f"edit_due_{task.id}"] = task.due_date
         st.session_state[f"edit_priority_{task.id}"] = task.priority
         st.session_state[f"edit_category_{task.id}"] = task.category
         
-        # Initialisiere auch die UI-Keys
+        # Initialisiert auch die UI-Keys (mit Platzhaltern für None-Werte)
         prio_placeholder = "Priorität auswählen"
         cat_placeholder = "Kategorie auswählen"
         
@@ -599,7 +619,7 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         else:
             st.session_state[f"edit_category_ui_{task.id}"] = task.category
     
-    # Validiere Kategorie: Wenn gelöscht, auf None setzen
+    # Validiert Kategorie: Wenn zwischenzeitlich gelöscht, auf None setzen
     categories = controller.list_categories()
     current_cat = st.session_state.get(f"edit_category_{task.id}")
     if current_cat is not None and current_cat not in categories:
@@ -627,9 +647,8 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         )
 
     with col_cancel:
-
         def _on_cancel():
-            # ✅ View löscht ihre Edit-Keys
+            """Callback: Bricht Bearbeitung ab und löscht Edit-State"""
             st.session_state.pop(f"edit_title_{task.id}", None)
             st.session_state.pop(f"edit_due_{task.id}", None)
             st.session_state.pop(f"edit_priority_{task.id}", None)
@@ -652,11 +671,11 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
     col_prio, col_cat, col_save = st.columns([0.45, 0.47, 0.08], gap="small")
 
     with col_prio:
-        # Verwende Platzhalter-String statt None
+        # Verwendet Platzhalter-String statt None (gleiche Logik wie in _render_add_form)
         prio_placeholder = "Priorität auswählen"
         prio_options = [prio_placeholder] + PRIORITY_OPTIONS
         
-        # Konvertiere aktuellen Wert
+        # Konvertiert aktuellen Wert zu Display-Wert
         current_prio = st.session_state.get(f"edit_priority_{task.id}")
         if current_prio is None or current_prio not in PRIORITY_OPTIONS:
             display_value = prio_placeholder
@@ -669,6 +688,7 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             st.session_state[ui_prio_key] = display_value
         
         def _on_edit_priority_change():
+            """Callback: Synchronisiert UI-Wert mit echtem Wert"""
             selected = st.session_state[ui_prio_key]
             if selected == prio_placeholder:
                 st.session_state[f"edit_priority_{task.id}"] = None
@@ -684,11 +704,11 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         )
 
     with col_cat:
-        # Verwende Platzhalter-String statt None
+        # Verwendet Platzhalter-String statt None
         cat_placeholder = "Kategorie auswählen"
         cat_options = [cat_placeholder] + categories
         
-        # Konvertiere aktuellen Wert
+        # Konvertiert aktuellen Wert zu Display-Wert
         current_cat = st.session_state.get(f"edit_category_{task.id}")
         if current_cat is None or current_cat not in categories:
             display_cat_value = cat_placeholder
@@ -701,6 +721,7 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
             st.session_state[ui_cat_key] = display_cat_value
         
         def _on_edit_category_change():
+            """Callback: Synchronisiert UI-Wert mit echtem Wert"""
             selected = st.session_state[ui_cat_key]
             if selected == cat_placeholder:
                 st.session_state[f"edit_category_{task.id}"] = None
@@ -717,13 +738,13 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
         )
 
     with col_save:
-
         def _on_save():
-            # ✅ View sammelt Daten und ruft Controller
+            """Callback: Speichert Änderungen über Controller"""
             title = st.session_state.get(f"edit_title_{task.id}", "").strip()
             if not title:
                 return
 
+            # Ruft Controller mit allen gesammelten Parametern
             success = controller.update_task(
                 task_id=task.id,
                 title=title,
@@ -732,8 +753,8 @@ def _render_task_edit_content(controller: TodoController, task) -> None:
                 category=st.session_state.get(f"edit_category_{task.id}"),
             )
 
+            # Beendet Bearbeitungsmodus und lösche Edit-State
             if success:
-                # ✅ View löscht ihre Edit-Keys
                 st.session_state.pop(f"edit_title_{task.id}", None)
                 st.session_state.pop(f"edit_due_{task.id}", None)
                 st.session_state.pop(f"edit_priority_{task.id}", None)
@@ -758,9 +779,8 @@ def _render_task_view_buttons(controller: TodoController, task) -> None:
     btn1, btn2 = st.columns(2, gap="small")
 
     with btn1:
-
         def _on_edit():
-            # ✅ View setzt Edit-State
+            """Callback: Aktiviert Bearbeitungsmodus für diese Aufgabe"""
             st.session_state.editing_task_id = task.id
 
         st.button(

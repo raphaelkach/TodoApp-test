@@ -1,7 +1,5 @@
 """
 End-to-End-Test für das Anlegen einer neuen Aufgabe in der TODO-App.
-
-Ultra-minimal - absolut nötigste Code!
 """
 
 import subprocess

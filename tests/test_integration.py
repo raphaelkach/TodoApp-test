@@ -43,7 +43,7 @@ class TestTaskIntegration:
         """
         Test: Mehrere Aufgaben erstellen und Repository-Konsistenz prüfen.
         """
-        # Erstelle 3 Tasks mit unterschiedlichen Attributen
+        # Erstellt 3 Tasks mit unterschiedlichen Attributen
         service.add_task(
             title="Erste Aufgabe",
             due_date=date(2026, 1, 15),
@@ -59,7 +59,7 @@ class TestTaskIntegration:
             priority="Niedrig"
         )
 
-        # Prüfe Repository-Konsistenz
+        # Prüft Repository-Konsistenz
         all_tasks = repository.list_all()
         assert len(all_tasks) == 3
 

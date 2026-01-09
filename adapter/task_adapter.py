@@ -1,12 +1,8 @@
 """
-Adapter Pattern für die Todo-App (MINIMAL VERSION).
+Adapter Pattern für die Todo-App.
 
 Übersetzt externe Aufgabenobjekte in das interne Task-Format,
-OHNE den bestehenden Code der TODO-App zu verändern.
-
-Gemäß Folie 4:
-"Der Adapter ist eine Klasse, die sowohl mit dem Client als auch 
-mit dem Service zusammenarbeiten kann."
+ohne den bestehenden Code der TODO-App zu verändern.
 """
 
 from __future__ import annotations
@@ -35,48 +31,43 @@ class TaskAdapter:
     - Client: Die Todo-App (verwendet Task-Objekte)
     - Service: ExternalTodoService (liefert ExternalTodoItem)
     - Adapter: TaskAdapter (übersetzt zwischen beiden)
-    
-    Konvertierungen:
-    - item_id (String "EXT-1000") -> id (int, z.B. 11000)
-    - name -> title
-    - is_completed -> done
-    - urgency (1-5) -> priority ("Niedrig"/"Mittel"/"Hoch")
-    - label -> category
     """
 
     def __init__(self, id_offset: int = 10000):
         """
-        Args:
-            id_offset: Offset für ID-Konvertierung (verhindert Kollisionen)
+        Initialisiert den Adapter.
         """
         self._id_offset = id_offset
 
     def _convert_id(self, external_id: str) -> int:
         """
         Konvertiert externe ID zu interner ID.
-        
-        "EXT-1000" -> 11000 (mit Offset 10000)
         """
         try:
+            # Extrahiere numerischen Teil nach dem letzten "-"
             num_part = external_id.split("-")[-1]
             return int(num_part) + self._id_offset
         except (ValueError, IndexError):
-            # Fallback: Hash der ID
+            # Fallback: Hash der ID für ungültige Formate
             return abs(hash(external_id)) % 100000 + self._id_offset
 
     def _convert_urgency(self, urgency: int) -> str:
-        """Konvertiert Urgency (1-5) zu Priority-String."""
+        """
+        Konvertiert Urgency (1-5) zu Priority-String.
+        
+        Mapping:
+        - 1-2: "Niedrig"
+        - 3: "Mittel"
+        - 4-5: "Hoch"
+        """
         return URGENCY_TO_PRIORITY.get(urgency, "Mittel")
 
     def adapt(self, external: ExternalTodoItem) -> Task:
         """
         Konvertiert ein externes Item zum internen Task-Format.
         
-        Args:
-            external: Externes Todo-Item
-            
-        Returns:
-            Internes Task-Objekt
+        Dies ist die Hauptmethode des Adapters. Sie übersetzt alle
+        Felder von ExternalTodoItem zu Task.
         """
         return Task(
             id=self._convert_id(external.item_id),
@@ -88,5 +79,9 @@ class TaskAdapter:
         )
 
     def adapt_many(self, externals: List[ExternalTodoItem]) -> List[Task]:
-        """Konvertiert mehrere externe Items."""
+        """
+        Konvertiert mehrere externe Items auf einmal.
+        
+        Nützlich für Batch-Operationen beim Import externer Daten.
+        """
         return [self.adapt(ext) for ext in externals]

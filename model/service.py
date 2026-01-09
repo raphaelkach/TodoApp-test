@@ -18,7 +18,15 @@ from model.constants import (
 
 
 class TodoService:
-    """Service für die Geschäftslogik der Todo-App."""
+    """
+    Service für die Geschäftslogik der Todo-App.
+    
+    Der Service implementiert die Geschäftslogik und Validierungsregeln:
+    - Validiert alle Eingaben vor dem Speichern
+    - Normalisiert Daten (trim, capitalize)
+    - Koordiniert komplexe Operationen (z.B. Kategorie löschen + Tasks aktualisieren)
+    - Delegiert Datenzugriff an das Repository
+    """
 
     def __init__(self, repo: SessionStateTaskRepository) -> None:
         self._repo = repo
@@ -30,19 +38,25 @@ class TodoService:
     # ---------- Validierung ----------
 
     def _validate_title(self, title: str | None) -> str | None:
-        """Validiert und normalisiert einen Titel."""
+        """
+        Validiert und normalisiert einen Titel.
+        """
         title = (title or "").strip()
         return title if title else None
 
     def _validate_priority(self, priority: str | None) -> str | None:
-        """Validiert und normalisiert eine Priorität. None ist erlaubt."""
+        """
+        Validiert und normalisiert eine Priorität.
+        """
         if priority is None:
             return None
         priority = priority.strip().capitalize()
         return priority if priority in PRIORITIES else None
 
     def _validate_category(self, category: str | None) -> str | None:
-        """Validiert eine Kategorie gegen existierende Kategorien."""
+        """
+        Validiert eine Kategorie gegen existierende Kategorien.
+        """
         category = (category or "").strip() or None
         if category is not None and category not in set(self._repo.list_categories()):
             return None
@@ -57,18 +71,28 @@ class TodoService:
         return cats
 
     def can_add_category(self) -> bool:
-        """Prüft ob eine weitere Kategorie hinzugefügt werden kann."""
+        """
+        Prüft ob eine weitere Kategorie hinzugefügt werden kann.
+        """
         return len(self._repo.list_categories()) < MAX_CATEGORIES
 
     def add_category(self, name: str) -> bool:
-        """Fügt eine neue Kategorie hinzu."""
+        """
+        Fügt eine neue Kategorie hinzu.
+        """
         name = (name or "").strip()
         if not name:
             return False
         return self._repo.add_category(name)
 
     def rename_category(self, old: str, new: str) -> bool:
-        """Benennt eine Kategorie um und aktualisiert alle betroffenen Tasks."""
+        """
+        Benennt eine Kategorie um und aktualisiert alle betroffenen Tasks.
+        
+        Geschäftslogik:
+        1. Repository-Ebene: Kategorie umbenennen
+        2. Service-Ebene: Alle Tasks mit dieser Kategorie aktualisieren
+        """
         old = (old or "").strip()
         new = (new or "").strip()
         if not old or not new:
@@ -88,7 +112,13 @@ class TodoService:
         return True
 
     def delete_category(self, name: str) -> bool:
-        """Löscht eine Kategorie und entfernt sie aus allen Tasks."""
+        """
+        Löscht eine Kategorie und entfernt sie aus allen Tasks.
+        
+        Geschäftslogik:
+        1. Repository-Ebene: Kategorie löschen
+        2. Service-Ebene: Kategorie aus allen Tasks entfernen
+        """
         name = (name or "").strip()
         if not name:
             return False
@@ -112,7 +142,9 @@ class TodoService:
         return self._repo.list_all()
 
     def get_filtered_tasks(self, filter_value: str) -> List[Task]:
-        """Gibt Tasks gefiltert nach Filter-Wert zurück."""
+        """
+        Gibt Tasks gefiltert nach Status zurück.
+        """
         all_tasks = self._repo.list_all()
         
         if filter_value == FILTER_OPEN:
@@ -122,7 +154,9 @@ class TodoService:
         return all_tasks
 
     def get_task_counts(self) -> tuple[int, int, int]:
-        """Gibt (alle, offen, erledigt) Anzahlen zurück."""
+        """
+        Gibt Statistiken zurück.
+        """
         all_tasks = self._repo.list_all()
         all_count = len(all_tasks)
         open_count = sum(1 for t in all_tasks if not t.done)
@@ -136,14 +170,21 @@ class TodoService:
         category: str | None = None,
         priority: str | None = DEFAULT_PRIORITY,
     ) -> bool:
-        """Fügt einen neuen Task hinzu. Gibt True zurück bei Erfolg."""
+        """
+        Fügt einen neuen Task hinzu.
+        
+        Validiert alle Eingaben und erstellt einen neuen Task.
+        """
+        # Validiere Titel (Pflichtfeld)
         validated_title = self._validate_title(title)
         if not validated_title:
             return False
 
+        # Validiert optionale Felder
         validated_category = self._validate_category(category)
         validated_priority = self._validate_priority(priority)
 
+        # Erstellt Task mit validierter Daten
         self._repo.add(
             Task(
                 id=self._repo.next_id(),
@@ -165,7 +206,9 @@ class TodoService:
         self._repo.update(task_id, done=done)
 
     def rename_task(self, task_id: int, new_title: str) -> bool:
-        """Benennt einen Task um. Gibt True zurück bei Erfolg."""
+        """
+        Benennt einen Task um.
+        """
         validated_title = self._validate_title(new_title)
         if not validated_title:
             return False
@@ -198,10 +241,10 @@ class TodoService:
     ) -> bool:
         """
         Aktualisiert einen Task mit mehreren Attributen auf einmal.
-        Gibt True zurück bei Erfolg.
         """
         updates = {}
 
+        # Validiert und sammle Updates
         if title is not None:
             validated_title = self._validate_title(title)
             if not validated_title:
@@ -217,6 +260,7 @@ class TodoService:
         if update_priority:
             updates["priority"] = self._validate_priority(priority)
 
+        # Führt alle Updates auf einmal aus
         if updates:
             self._repo.update(task_id, **updates)
 

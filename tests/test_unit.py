@@ -1,6 +1,5 @@
 """
-Unit Tests für die TODO-App - Optimiert für 80%+ Coverage.
-Fokus: Alle Anforderungen + kritische Code-Pfade.
+Unit Tests für die TODO-App.
 """
 
 from datetime import date, timedelta
