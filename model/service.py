@@ -7,7 +7,14 @@ from typing import List
 
 from model.entities import Task
 from model.repository import SessionStateTaskRepository
-from model.constants import PRIORITIES, DEFAULT_PRIORITY
+from model.constants import (
+    PRIORITIES,
+    DEFAULT_PRIORITY,
+    MAX_CATEGORIES,
+    FILTER_ALL,
+    FILTER_OPEN,
+    FILTER_DONE,
+)
 
 
 class TodoService:
@@ -49,6 +56,10 @@ class TodoService:
         cats.sort(key=lambda x: x.lower())
         return cats
 
+    def can_add_category(self) -> bool:
+        """Prüft ob eine weitere Kategorie hinzugefügt werden kann."""
+        return len(self._repo.list_categories()) < MAX_CATEGORIES
+
     def add_category(self, name: str) -> bool:
         """Fügt eine neue Kategorie hinzu."""
         name = (name or "").strip()
@@ -57,22 +68,66 @@ class TodoService:
         return self._repo.add_category(name)
 
     def rename_category(self, old: str, new: str) -> bool:
-        """Benennt eine Kategorie um."""
+        """Benennt eine Kategorie um und aktualisiert alle betroffenen Tasks."""
         old = (old or "").strip()
         new = (new or "").strip()
         if not old or not new:
             return False
-        return self._repo.rename_category(old, new)
+        
+        # Repository umbenennen
+        if not self._repo.rename_category(old, new):
+            return False
+        
+        # Alle Tasks mit dieser Kategorie aktualisieren (Geschäftslogik)
+        if old != new:
+            tasks = self._repo.list_all()
+            for task in tasks:
+                if task.category == old:
+                    self._repo.update(task.id, category=new)
+        
+        return True
 
     def delete_category(self, name: str) -> bool:
-        """Löscht eine Kategorie."""
-        return self._repo.delete_category(name)
+        """Löscht eine Kategorie und entfernt sie aus allen Tasks."""
+        name = (name or "").strip()
+        if not name:
+            return False
+        
+        # Repository löschen
+        if not self._repo.delete_category(name):
+            return False
+        
+        # Kategorie aus allen Tasks entfernen (Geschäftslogik)
+        tasks = self._repo.list_all()
+        for task in tasks:
+            if task.category == name:
+                self._repo.update(task.id, category=None)
+        
+        return True
 
     # ---------- Tasks ----------
 
     def list_tasks(self) -> List[Task]:
         """Gibt alle Tasks zurück."""
         return self._repo.list_all()
+
+    def get_filtered_tasks(self, filter_value: str) -> List[Task]:
+        """Gibt Tasks gefiltert nach Filter-Wert zurück."""
+        all_tasks = self._repo.list_all()
+        
+        if filter_value == FILTER_OPEN:
+            return [t for t in all_tasks if not t.done]
+        elif filter_value == FILTER_DONE:
+            return [t for t in all_tasks if t.done]
+        return all_tasks
+
+    def get_task_counts(self) -> tuple[int, int, int]:
+        """Gibt (alle, offen, erledigt) Anzahlen zurück."""
+        all_tasks = self._repo.list_all()
+        all_count = len(all_tasks)
+        open_count = sum(1 for t in all_tasks if not t.done)
+        done_count = sum(1 for t in all_tasks if t.done)
+        return all_count, open_count, done_count
 
     def add_task(
         self,

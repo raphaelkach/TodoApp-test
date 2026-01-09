@@ -110,19 +110,6 @@ class SessionStateTaskRepository:
             return False
 
         self._state[CATEGORIES_KEY] = [new if c == old else c for c in cats]
-
-        # Aktualisiere Kategorie in allen Tasks
-        self._state[TASKS_KEY] = [
-            Task(
-                id=t.id,
-                title=t.title,
-                done=t.done,
-                due_date=t.due_date,
-                category=(new if t.category == old else t.category),
-                priority=t.priority,
-            )
-            for t in self._state[TASKS_KEY]
-        ]
         return True
 
     def delete_category(self, name: str) -> bool:
@@ -137,17 +124,4 @@ class SessionStateTaskRepository:
             return False
 
         self._state[CATEGORIES_KEY] = [c for c in cats if c != name]
-
-        # Entferne Kategorie aus allen Tasks
-        self._state[TASKS_KEY] = [
-            Task(
-                id=t.id,
-                title=t.title,
-                done=t.done,
-                due_date=t.due_date,
-                category=(None if t.category == name else t.category),
-                priority=t.priority,
-            )
-            for t in self._state[TASKS_KEY]
-        ]
         return True

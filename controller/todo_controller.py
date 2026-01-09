@@ -68,8 +68,7 @@ class TodoController:
 
     def can_add_category(self) -> bool:
         """Prüft ob eine weitere Kategorie hinzugefügt werden kann."""
-        from model.constants import MAX_CATEGORIES
-        return len(self._service.list_categories()) < MAX_CATEGORIES
+        return self._service.can_add_category()
 
     # ---------- Kategorien (Aktionen) ----------
 
@@ -149,22 +148,12 @@ class TodoController:
 
     def get_filtered_tasks(self) -> List[Task]:
         """Gibt Tasks gefiltert nach aktuellem Filter zurück."""
-        all_tasks = self._service.list_tasks()
         filter_value = self.get_filter()
-
-        if filter_value == FILTER_OPEN:
-            return [t for t in all_tasks if not t.done]
-        elif filter_value == FILTER_DONE:
-            return [t for t in all_tasks if t.done]
-        return all_tasks
+        return self._service.get_filtered_tasks(filter_value)
 
     def get_task_counts(self) -> tuple[int, int, int]:
         """Gibt (alle, offen, erledigt) Anzahlen zurück."""
-        all_tasks = self._service.list_tasks()
-        all_count = len(all_tasks)
-        open_count = sum(1 for t in all_tasks if not t.done)
-        done_count = sum(1 for t in all_tasks if t.done)
-        return all_count, open_count, done_count
+        return self._service.get_task_counts()
 
     # ---------- Tasks (Aktionen) ----------
 
@@ -175,8 +164,8 @@ class TodoController:
             return
 
         due_date = self._ui.get(UI_ADD_DUE_DATE)
-        category = self._normalize_category(self._ui.get(UI_NEW_CATEGORY))
-        priority = self._normalize_priority(self._ui.get(UI_NEW_PRIORITY))
+        category = self._ui_to_domain(self._ui.get(UI_NEW_CATEGORY))
+        priority = self._ui_to_domain(self._ui.get(UI_NEW_PRIORITY))
 
         if self._service.add_task(title, due_date, category, priority):
             self._reset_add_form()
@@ -219,8 +208,8 @@ class TodoController:
         """Speichert die Bearbeitung eines Tasks."""
         title = self._ui.get(f"title_{task_id}", "")
         due_date = self._ui.get(f"due_value_{task_id}")
-        priority = self._normalize_priority(self._ui.get(f"prio_{task_id}"))
-        category = self._normalize_category(self._ui.get(f"cat_sel_{task_id}"))
+        priority = self._ui_to_domain(self._ui.get(f"prio_{task_id}"))
+        category = self._ui_to_domain(self._ui.get(f"cat_sel_{task_id}"))
 
         self._service.update_task(
             task_id,
@@ -292,17 +281,11 @@ class TodoController:
             return s
         return FILTER_ALL
 
-    # ---------- Hilfsmethoden ----------
+    # ---------- UI-Domain-Mapping ----------
 
-    def _normalize_category(self, value: str | None) -> str | None:
-        """Normalisiert einen Kategorie-Wert."""
-        if not value or value == CATEGORY_NONE_LABEL:
-            return None
-        return value
-
-    def _normalize_priority(self, value: str | None) -> str | None:
-        """Normalisiert einen Priorität-Wert."""
-        if not value or value == PRIORITY_NONE_LABEL:
+    def _ui_to_domain(self, value: str | None) -> str | None:
+        """Konvertiert UI-Wert (z.B. 'Kategorie auswählen') zu Domain-Wert (None)."""
+        if not value or value in (CATEGORY_NONE_LABEL, PRIORITY_NONE_LABEL):
             return None
         return value
 
