@@ -9,7 +9,6 @@ from model.entities import Task
 from model.repository import SessionStateTaskRepository
 from model.service import TodoService
 from controller.todo_controller import TodoController
-from model.constants import FILTER_OPEN, FILTER_DONE, FILTER_ALL
 
 
 @pytest.fixture
@@ -24,13 +23,13 @@ def service():
 
 @pytest.fixture
 def controller():
-    """Controller mit Service und State."""
+    """Controller mit Service."""
     state = {}
     repo = SessionStateTaskRepository(state)
     svc = TodoService(repo)
-    ctrl = TodoController(svc, state)
+    ctrl = TodoController(svc)
     ctrl.initialize()
-    return ctrl, state
+    return ctrl
 
 
 class TestCore:
@@ -42,7 +41,7 @@ class TestCore:
         assert service.add_task("Task 1", priority="Hoch") is True
         assert len(service.list_tasks()) == 1
         assert service.list_tasks()[0].title == "Task 1"
-
+        
         # Delete
         task_id = service.list_tasks()[0].id
         service.delete_task(task_id)
@@ -52,11 +51,11 @@ class TestCore:
         """Test: Als erledigt/nicht erledigt markieren."""
         service.add_task("Task")
         task_id = service.list_tasks()[0].id
-
+        
         # Mark done
         service.set_done(task_id, True)
         assert service.list_tasks()[0].done is True
-
+        
         # Mark undone
         service.set_done(task_id, False)
         assert service.list_tasks()[0].done is False
@@ -66,11 +65,11 @@ class TestCore:
         service.add_task("Original")
         task_id = service.list_tasks()[0].id
         due = date.today() + timedelta(days=5)
-
+        
         # Edit via update_task
-        service.update_task(task_id, title="Updated", due_date=due,
-                            priority="Hoch", update_due_date=True, update_priority=True)
-
+        service.update_task(task_id, title="Updated", due_date=due, 
+                          priority="Hoch", update_due_date=True, update_priority=True)
+        
         task = service.list_tasks()[0]
         assert task.title == "Updated"
         assert task.due_date == due
@@ -81,7 +80,7 @@ class TestCore:
         # Leere Titel
         assert service.add_task("") is False
         assert service.add_task("   ") is False
-
+        
         # Ungültige Priorität
         service.add_task("Task", priority="Invalid")
         assert service.list_tasks()[0].priority is None
@@ -95,19 +94,19 @@ class TestCategories:
         # Add
         assert service.add_category("Work") is True
         assert "Work" in service.list_categories()
-
+        
         # Duplikat verhindern
         assert service.add_category("Work") is False
-
+        
         # Rename
         assert service.rename_category("Work", "Job") is True
         assert "Job" in service.list_categories()
         assert "Work" not in service.list_categories()
-
+        
         # Delete
         assert service.delete_category("Job") is True
         assert "Job" not in service.list_categories()
-
+        
         # Max limit (5)
         for i in range(5):
             service.add_category(f"C{i}")
@@ -119,86 +118,83 @@ class TestCategories:
         service.add_category("Work")
         service.add_task("Task", category="Work")
         assert service.list_tasks()[0].category == "Work"
-
+        
         # Kategorie umbenennen
         service.rename_category("Work", "Job")
         assert service.list_tasks()[0].category == "Job"
-
+        
         # Kategorie löschen
         service.delete_category("Job")
         assert service.list_tasks()[0].category is None
 
 
 class TestController:
-    """Controller UI-Integration."""
+    """Controller-Methoden (ohne UI-State)."""
 
     def test_controller_workflow(self, controller):
-        """Test: Kompletter Workflow via Controller."""
-        ctrl, state = controller
-
-        # Add via UI-State
-        state["new_title"] = "UI Task"
-        state["new_priority"] = "Hoch"
-        ctrl.add_task()
-        assert len(ctrl.list_tasks()) == 1
-        assert state["new_title"] == ""  # Reset
-
+        """Test: Workflow via Controller-Methoden."""
+        # Add
+        assert controller.add_task("Task 1", priority="Hoch") is True
+        assert len(controller.list_tasks()) == 1
+        
+        # Noch ein Task hinzufügen
+        controller.add_task("Task 2")
+        assert len(controller.list_tasks()) == 2
+        
+        # Done setzen
+        task_id = controller.list_tasks()[1].id
+        controller.toggle_task_done(task_id, True)
+        assert controller.list_tasks()[1].done is True
+        
         # Filter
-        state["new_title"] = "Done Task"
-        ctrl.add_task()
-        task_id = ctrl.list_tasks()[1].id
-        state[f"done_{task_id}"] = True
-        ctrl.toggle_done(task_id)
-
-        # Test Filter
-        ctrl.set_filter("Offen")
-        assert ctrl.get_filter() == FILTER_OPEN
-        assert len(ctrl.get_filtered_tasks()) == 1
-
-        ctrl.set_filter("Erledigt")
-        assert ctrl.get_filter() == FILTER_DONE
-        assert len(ctrl.get_filtered_tasks()) == 1
-
+        open_tasks = controller.get_filtered_tasks("Offen")
+        done_tasks = controller.get_filtered_tasks("Erledigt")
+        assert len(open_tasks) == 1
+        assert len(done_tasks) == 1
+        
         # Counts
-        all_c, open_c, done_c = ctrl.get_task_counts()
+        all_c, open_c, done_c = controller.get_task_counts()
         assert (all_c, open_c, done_c) == (2, 1, 1)
 
     def test_controller_categories(self, controller):
         """Test: Kategorie-Management via Controller."""
-        ctrl, state = controller
-
         # Hinzufügen
-        state["cat_new_name"] = "Work"
-        ctrl.add_category()
-        assert "Work" in ctrl.list_categories()
-
+        assert controller.add_category("Work") is True
+        assert "Work" in controller.list_categories()
+        
+        # Kann hinzufügen prüfen
+        assert controller.can_add_category() is True
+        
         # Umbenennen
-        ctrl.start_rename_category("Work")
-        state["cat_rename_value"] = "Job"
-        ctrl.save_rename_category("Work")
-        assert "Job" in ctrl.list_categories()
-
+        assert controller.rename_category("Work", "Job") is True
+        assert "Job" in controller.list_categories()
+        assert "Work" not in controller.list_categories()
+        
         # Löschen
-        ctrl.delete_category("Job")
-        assert "Job" not in ctrl.list_categories()
+        assert controller.delete_category("Job") is True
+        assert "Job" not in controller.list_categories()
 
     def test_controller_edit(self, controller):
         """Test: Task-Bearbeitung via Controller."""
-        ctrl, state = controller
-
         # Task erstellen
-        state["new_title"] = "Original"
-        ctrl.add_task()
-        task = ctrl.list_tasks()[0]
-
-        # Edit
-        ctrl.start_edit(task.id, task.title, task.due_date,
-                        task.category, task.priority)
-        state[f"title_{task.id}"] = "Edited"
-        ctrl.save_edit(task.id)
-
-        assert ctrl.list_tasks()[0].title == "Edited"
-        assert not ctrl.is_editing(task.id)
+        controller.add_task("Original")
+        task = controller.list_tasks()[0]
+        
+        # Update
+        success = controller.update_task(
+            task.id,
+            title="Edited",
+            priority="Hoch"
+        )
+        assert success is True
+        
+        updated = controller.list_tasks()[0]
+        assert updated.title == "Edited"
+        assert updated.priority == "Hoch"
+        
+        # Delete
+        controller.delete_task(task.id)
+        assert len(controller.list_tasks()) == 0
 
 
 class TestEdgeCases:
@@ -210,12 +206,12 @@ class TestEdgeCases:
         service.add_task("Dup")
         service.add_task("Dup")
         assert len([t for t in service.list_tasks() if t.title == "Dup"]) == 2
-
+        
         # Datum (Past/Future)
         past = date.today() - timedelta(days=10)
         service.add_task("Past", due_date=past)
         assert service.list_tasks()[-1].due_date == past
-
+        
         # Unicode
         service.add_task("✓ 你好 🎉")
         assert service.list_tasks()[-1].title == "✓ 你好 🎉"
