@@ -1,5 +1,5 @@
 """
-Factory Patterns für die Todo-App.
+Factory Patterns für die Todo-App (MINIMAL VERSION).
 
 Enthält:
 - Factory Pattern (TaskFactory)

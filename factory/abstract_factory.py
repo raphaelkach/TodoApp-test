@@ -1,28 +1,20 @@
 """
-Abstract Factory Pattern für die Todo-App.
+Abstract Factory Pattern für die Todo-App (MINIMAL VERSION).
 
 Erlaubt es, Familien verwandter Objekte zu erzeugen, ohne deren
 konkrete Klassen angeben zu müssen.
 
-Produktfamilien:
-- Simple: Einfache Aufgaben mit minimalen Informationen
-- Detailed: Detaillierte Aufgaben mit allen Metadaten
-
-Verwendung (wie im Foliensatz):
-    factory = DetailedTaskFactory()  # oder SimpleTaskFactory()
-    todo = factory.create_todo_task()
-    shopping = factory.create_shopping_task()
-    work = factory.create_work_task()
-    
-    todo.describe()  # Detaillierte ToDo-Aufgabe
+Gemäß Folie 3:
+- AbstractTask mit describe()
+- Simple: SimpleTodoTask, SimpleShoppingTask, SimpleWorkTask
+- Detailed: DetailedTodoTask, DetailedShoppingTask, DetailedWorkTask
+- AbstractTaskFactory, SimpleTaskFactory, DetailedTaskFactory
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import date, datetime
-from typing import List
+from dataclasses import dataclass
 
 
 # ============================================================================
@@ -38,11 +30,6 @@ class AbstractTask(ABC):
         """Beschreibt die Aufgabe."""
         pass
 
-    @abstractmethod
-    def get_details(self) -> dict:
-        """Gibt alle Details als Dictionary zurück."""
-        pass
-
 
 # ============================================================================
 # 2. Konkrete Produkte - Simple-Varianten
@@ -51,7 +38,7 @@ class AbstractTask(ABC):
 
 @dataclass
 class SimpleTodoTask(AbstractTask):
-    """Einfache ToDo-Aufgabe mit nur Titel."""
+    """Einfache ToDo-Aufgabe."""
 
     title: str
     done: bool = False
@@ -60,13 +47,10 @@ class SimpleTodoTask(AbstractTask):
         status = "✓" if self.done else "○"
         return f"[{status}] {self.title}"
 
-    def get_details(self) -> dict:
-        return {"type": "todo", "variant": "simple", "title": self.title, "done": self.done}
-
 
 @dataclass
 class SimpleShoppingTask(AbstractTask):
-    """Einfache Einkaufsaufgabe mit nur Artikel."""
+    """Einfache Einkaufsaufgabe."""
 
     item: str
     done: bool = False
@@ -75,13 +59,10 @@ class SimpleShoppingTask(AbstractTask):
         status = "✓" if self.done else "○"
         return f"[{status}] Kaufen: {self.item}"
 
-    def get_details(self) -> dict:
-        return {"type": "shopping", "variant": "simple", "item": self.item, "done": self.done}
-
 
 @dataclass
 class SimpleWorkTask(AbstractTask):
-    """Einfache Arbeitsaufgabe mit nur Titel."""
+    """Einfache Arbeitsaufgabe."""
 
     title: str
     done: bool = False
@@ -89,9 +70,6 @@ class SimpleWorkTask(AbstractTask):
     def describe(self) -> str:
         status = "✓" if self.done else "○"
         return f"[{status}] Arbeit: {self.title}"
-
-    def get_details(self) -> dict:
-        return {"type": "work", "variant": "simple", "title": self.title, "done": self.done}
 
 
 # ============================================================================
@@ -101,136 +79,55 @@ class SimpleWorkTask(AbstractTask):
 
 @dataclass
 class DetailedTodoTask(AbstractTask):
-    """Detaillierte ToDo-Aufgabe mit allen Metadaten."""
+    """Detaillierte ToDo-Aufgabe mit Metadaten."""
 
     title: str
     done: bool = False
-    due_date: date | None = None
-    category: str | None = None
     priority: str = "Mittel"
-    notes: str = ""
-    created_at: datetime = field(default_factory=datetime.now)
-    tags: List[str] = field(default_factory=list)
+    category: str | None = None
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        parts = [f"[{status}] {self.title}"]
-
+        details = []
+        
         if self.priority != "Mittel":
-            parts.append(f"[{self.priority}]")
+            details.append(f"[{self.priority}]")
         if self.category:
-            parts.append(f"({self.category})")
-        if self.due_date:
-            parts.append(f"bis {self.due_date.strftime('%d.%m.%Y')}")
-        if self.tags:
-            parts.append(f"#{' #'.join(self.tags)}")
-
-        return " ".join(parts)
-
-    def get_details(self) -> dict:
-        return {
-            "type": "todo",
-            "variant": "detailed",
-            "title": self.title,
-            "done": self.done,
-            "due_date": self.due_date,
-            "category": self.category,
-            "priority": self.priority,
-            "notes": self.notes,
-            "created_at": self.created_at,
-            "tags": self.tags,
-        }
+            details.append(f"({self.category})")
+        
+        detail_str = " ".join(details)
+        return f"[{status}] {self.title} {detail_str}".strip()
 
 
 @dataclass
 class DetailedShoppingTask(AbstractTask):
-    """Detaillierte Einkaufsaufgabe mit allen Metadaten."""
+    """Detaillierte Einkaufsaufgabe mit Metadaten."""
 
     item: str
     quantity: int = 1
-    unit: str = "Stück"
     done: bool = False
     store: str | None = None
-    category: str | None = None
-    price_estimate: float | None = None
-    notes: str = ""
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        parts = [f"[{status}] {self.quantity} {self.unit} {self.item}"]
-
-        if self.store:
-            parts.append(f"@ {self.store}")
-        if self.category:
-            parts.append(f"({self.category})")
-        if self.price_estimate:
-            parts.append(f"~{self.price_estimate:.2f}€")
-
-        return " ".join(parts)
-
-    def get_details(self) -> dict:
-        return {
-            "type": "shopping",
-            "variant": "detailed",
-            "item": self.item,
-            "quantity": self.quantity,
-            "unit": self.unit,
-            "done": self.done,
-            "store": self.store,
-            "category": self.category,
-            "price_estimate": self.price_estimate,
-            "notes": self.notes,
-        }
+        store_info = f" @ {self.store}" if self.store else ""
+        return f"[{status}] {self.quantity}x {self.item}{store_info}"
 
 
 @dataclass
 class DetailedWorkTask(AbstractTask):
-    """Detaillierte Arbeitsaufgabe mit allen Metadaten."""
+    """Detaillierte Arbeitsaufgabe mit Metadaten."""
 
     title: str
     done: bool = False
     project: str | None = None
     priority: str = "Mittel"
-    deadline: date | None = None
-    assignee: str | None = None
-    estimated_hours: float | None = None
-    description: str = ""
-    subtasks: List[str] = field(default_factory=list)
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        parts = [f"[{status}]"]
-
-        if self.project:
-            parts.append(f"[{self.project}]")
-
-        parts.append(self.title)
-
-        if self.priority != "Mittel":
-            parts.append(f"({self.priority})")
-        if self.deadline:
-            parts.append(f"bis {self.deadline.strftime('%d.%m.%Y')}")
-        if self.assignee:
-            parts.append(f"→ {self.assignee}")
-        if self.estimated_hours:
-            parts.append(f"~{self.estimated_hours}h")
-
-        return " ".join(parts)
-
-    def get_details(self) -> dict:
-        return {
-            "type": "work",
-            "variant": "detailed",
-            "title": self.title,
-            "done": self.done,
-            "project": self.project,
-            "priority": self.priority,
-            "deadline": self.deadline,
-            "assignee": self.assignee,
-            "estimated_hours": self.estimated_hours,
-            "description": self.description,
-            "subtasks": self.subtasks,
-        }
+        proj = f"[{self.project}] " if self.project else ""
+        prio = f" ({self.priority})" if self.priority != "Mittel" else ""
+        return f"[{status}] {proj}{self.title}{prio}"
 
 
 # ============================================================================
@@ -296,30 +193,23 @@ class DetailedTaskFactory(AbstractTaskFactory):
     """
     Fabrik für detaillierte Aufgaben.
     
-    Erstellt Aufgaben mit allen verfügbaren Metadaten.
+    Erstellt Aufgaben mit zusätzlichen Metadaten.
     """
 
     def create_todo_task(self, title: str, **kwargs) -> DetailedTodoTask:
         return DetailedTodoTask(
             title=title,
             done=kwargs.get("done", False),
-            due_date=kwargs.get("due_date"),
-            category=kwargs.get("category"),
             priority=kwargs.get("priority", "Mittel"),
-            notes=kwargs.get("notes", ""),
-            tags=kwargs.get("tags", []),
+            category=kwargs.get("category"),
         )
 
     def create_shopping_task(self, item: str, **kwargs) -> DetailedShoppingTask:
         return DetailedShoppingTask(
             item=item,
             quantity=kwargs.get("quantity", 1),
-            unit=kwargs.get("unit", "Stück"),
             done=kwargs.get("done", False),
             store=kwargs.get("store"),
-            category=kwargs.get("category"),
-            price_estimate=kwargs.get("price_estimate"),
-            notes=kwargs.get("notes", ""),
         )
 
     def create_work_task(self, title: str, **kwargs) -> DetailedWorkTask:
@@ -328,9 +218,4 @@ class DetailedTaskFactory(AbstractTaskFactory):
             done=kwargs.get("done", False),
             project=kwargs.get("project"),
             priority=kwargs.get("priority", "Mittel"),
-            deadline=kwargs.get("deadline"),
-            assignee=kwargs.get("assignee"),
-            estimated_hours=kwargs.get("estimated_hours"),
-            description=kwargs.get("description", ""),
-            subtasks=kwargs.get("subtasks", []),
         )

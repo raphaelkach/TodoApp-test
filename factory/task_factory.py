@@ -1,24 +1,23 @@
 """
-Factory Pattern für die Todo-App.
+Factory Pattern für die Todo-App (MINIMAL VERSION).
 
 Erstellt verschiedene Aufgabentypen flexibel, ohne dass der Client-Code
 direkt die konkreten Klassen kennt.
 
-Aufgabentypen:
-- TodoTask – normale Aufgabe
-- ShoppingTask – Einkaufsliste
-- WorkTask – Arbeitsaufgabe
+Gemäß Folie 2:
+- Abstrakte Klasse Task mit describe()
+- TodoTask, ShoppingTask, WorkTask
+- TaskFactory mit create_task(type: str)
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import date
 
 
 # ============================================================================
-# 1. Abstrakte Klasse (Interface) Task mit describe()
+# 1. Abstrakte Klasse Task mit describe()
 # ============================================================================
 
 
@@ -28,11 +27,6 @@ class Task(ABC):
     @abstractmethod
     def describe(self) -> str:
         """Beschreibt die Aufgabe."""
-        pass
-
-    @abstractmethod
-    def get_type(self) -> str:
-        """Gibt den Aufgabentyp zurück."""
         pass
 
 
@@ -47,15 +41,10 @@ class TodoTask(Task):
 
     title: str
     done: bool = False
-    due_date: date | None = None
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        due = f" (bis {self.due_date.strftime('%d.%m.%Y')})" if self.due_date else ""
-        return f"[{status}] ToDo: {self.title}{due}"
-
-    def get_type(self) -> str:
-        return "todo"
+        return f"[{status}] ToDo: {self.title}"
 
 
 @dataclass
@@ -63,38 +52,23 @@ class ShoppingTask(Task):
     """Einkaufslisten-Aufgabe."""
 
     item: str
-    quantity: int = 1
     done: bool = False
-    store: str | None = None
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        store_info = f" @ {self.store}" if self.store else ""
-        return f"[{status}] Einkauf: {self.quantity}x {self.item}{store_info}"
-
-    def get_type(self) -> str:
-        return "shopping"
+        return f"[{status}] Einkauf: {self.item}"
 
 
 @dataclass
 class WorkTask(Task):
-    """Arbeitsaufgabe mit Projekt und Deadline."""
+    """Arbeitsaufgabe."""
 
     title: str
-    project: str | None = None
-    priority: str = "Mittel"
     done: bool = False
-    deadline: date | None = None
 
     def describe(self) -> str:
         status = "✓" if self.done else "○"
-        proj = f" [{self.project}]" if self.project else ""
-        prio = f" ({self.priority})" if self.priority else ""
-        dl = f" bis {self.deadline.strftime('%d.%m.%Y')}" if self.deadline else ""
-        return f"[{status}] Arbeit{proj}: {self.title}{prio}{dl}"
-
-    def get_type(self) -> str:
-        return "work"
+        return f"[{status}] Arbeit: {self.title}"
 
 
 # ============================================================================
@@ -110,26 +84,22 @@ class TaskFactory:
     
     Verwendung (wie im Foliensatz):
         factory = TaskFactory()
-        task1 = factory.create_task("todo")
-        task2 = factory.create_task("shopping")
-        task3 = factory.create_task("work")
+        task1 = factory.create_task("todo", title="Folien wiederholen")
+        task2 = factory.create_task("shopping", title="Milch")
+        task3 = factory.create_task("work", title="Meeting")
         
-        task1.describe()  # Ausgabe: Dies ist eine allgemeine ToDo-Aufgabe.
+        task1.describe()  # [○] ToDo: Folien wiederholen
     """
 
     @staticmethod
-    def create_task(
-        task_type: str,
-        title: str = "Neue Aufgabe",
-        **kwargs,
-    ) -> Task:
+    def create_task(task_type: str, title: str, **kwargs) -> Task:
         """
         Erstellt eine Aufgabe basierend auf dem Typ.
         
         Args:
             task_type: "todo", "shopping" oder "work"
             title: Titel/Name der Aufgabe
-            **kwargs: Zusätzliche Parameter je nach Aufgabentyp
+            **kwargs: done (optional)
             
         Returns:
             Task-Objekt des entsprechenden Typs
@@ -138,33 +108,13 @@ class TaskFactory:
             ValueError: Bei unbekanntem Aufgabentyp
         """
         task_type = task_type.lower().strip()
+        done = kwargs.get("done", False)
 
         if task_type == "todo":
-            return TodoTask(
-                title=title,
-                done=kwargs.get("done", False),
-                due_date=kwargs.get("due_date"),
-            )
-
+            return TodoTask(title=title, done=done)
         elif task_type == "shopping":
-            return ShoppingTask(
-                item=title,
-                quantity=kwargs.get("quantity", 1),
-                done=kwargs.get("done", False),
-                store=kwargs.get("store"),
-            )
-
+            return ShoppingTask(item=title, done=done)
         elif task_type == "work":
-            return WorkTask(
-                title=title,
-                project=kwargs.get("project"),
-                priority=kwargs.get("priority", "Mittel"),
-                done=kwargs.get("done", False),
-                deadline=kwargs.get("deadline"),
-            )
-
+            return WorkTask(title=title, done=done)
         else:
-            raise ValueError(
-                f"Unbekannter Aufgabentyp: '{task_type}'. "
-                f"Erlaubt: 'todo', 'shopping', 'work'"
-            )
+            raise ValueError(f"Unbekannter Aufgabentyp: '{task_type}'")
