@@ -1,11 +1,10 @@
 """
-Adapter Pattern für die Todo-App.
+Adapter Pattern für die Todo-App (MINIMAL VERSION).
 
 Enthält:
 - ExternalTodoService (externe API)
 - ExternalTodoItem (externes Datenformat)
 - TaskAdapter (Konvertierung extern -> intern)
-- BidirectionalTaskAdapter (bidirektionale Konvertierung)
 """
 
 from adapter.external_api import (
@@ -15,9 +14,7 @@ from adapter.external_api import (
 
 from adapter.task_adapter import (
     TaskAdapter,
-    BidirectionalTaskAdapter,
     URGENCY_TO_PRIORITY,
-    PRIORITY_TO_URGENCY,
 )
 
 __all__ = [
@@ -26,7 +23,5 @@ __all__ = [
     "ExternalTodoService",
     # Adapter
     "TaskAdapter",
-    "BidirectionalTaskAdapter",
     "URGENCY_TO_PRIORITY",
-    "PRIORITY_TO_URGENCY",
 ]
